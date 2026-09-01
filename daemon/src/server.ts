@@ -20,21 +20,17 @@ export function startServer(mocksDirectory: string, port: number) {
     for (const client of server.clients) client.send(data)
   }
 
-  chokidar
-    .watch(mocksDirectory, { ignoreInitial: true })
-    .on('all', () => {
-      try {
-        snapshot = loadSnapshot(mocksDirectory)
-        broadcast()
-        console.log(
-          `[mocker] reloaded: ${snapshot.scenarios.length} scenario(s)`,
-        )
-      } catch (error) {
-        console.error(
-          `[mocker] reload failed: ${error instanceof Error ? error.message : error}`,
-        )
-      }
-    })
+  chokidar.watch(mocksDirectory, { ignoreInitial: true }).on('all', () => {
+    try {
+      snapshot = loadSnapshot(mocksDirectory)
+      broadcast()
+      console.log(`[mocker] reloaded: ${snapshot.scenarios.length} scenario(s)`)
+    } catch (error) {
+      console.error(
+        `[mocker] reload failed: ${error instanceof Error ? error.message : error}`,
+      )
+    }
+  })
 
   console.log(
     `[mocker] serving "${snapshot.project.name}" (${snapshot.scenarios.length} scenario(s)) on ws://localhost:${port}`,

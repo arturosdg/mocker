@@ -63,6 +63,20 @@ varios escenarios pueden estar activos a la vez y, si dos mockean la misma URL,
 gana el último activado. El contador verde de cada escenario indica cuántas
 requests ha matcheado en la sesión.
 
+## Los mocks se ven en la Console
+
+Cada request matcheada se logea en la consola de la página con la URL original
+intacta, al estilo de tweak:
+
+```
+mocker 16:34:56 GET https://localhost:3001/api/tasks/ 200 (tareas-vacias)
+```
+
+El status va en verde (2xx/3xx) o rojo (4xx/5xx) y entre paréntesis aparece el
+escenario que sirvió el mock. Las requests mockeadas no aparecen en la tab
+Network (la respuesta es sintética, nunca sale del page-world) — la Console y
+el contador verde del popup son las señales de que el mock está funcionando.
+
 ## Roadmap
 
 - [x] Slice 1 — walking skeleton: daemon + popup con switches + intercepción fetch/XHR
