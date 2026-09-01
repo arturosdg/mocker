@@ -1,72 +1,18 @@
-import { EMPTY_STATE, type MockerState } from './lib/state'
+import { getAccessState, reloadSnapshot } from './lib/filesystem'
 
-const DAEMON_URL = 'ws://localhost:4848'
-
-let socket: WebSocket | null = null
-
-async function getState(): Promise<MockerState> {
-  const { state } = await chrome.storage.local.get('state')
-  return (state as MockerState | undefined) ?? EMPTY_STATE
-}
-
-async function patchState(patch: Partial<MockerState>) {
-  const state = await getState()
-  await chrome.storage.local.set({ state: { ...state, ...patch } })
-}
-
-function connect() {
-  if (
-    socket &&
-    (socket.readyState === WebSocket.OPEN ||
-      socket.readyState === WebSocket.CONNECTING)
-  ) {
-    return
-  }
-
-  socket = new WebSocket(DAEMON_URL)
-
-  socket.onopen = () => {
-    void patchState({ connected: true })
-  }
-
-  socket.onmessage = (event) => {
-    const message = JSON.parse(event.data as string)
-    if (message.type === 'snapshot') {
-      void patchState({
-        project: message.project,
-        scenarios: message.scenarios,
-      })
-    }
-    if (message.type === 'ack') {
-      const respond = pendingWrites.get(message.requestId as string)
-      if (respond) {
-        pendingWrites.delete(message.requestId as string)
-        respond(message)
-      }
-    }
-  }
-
-  socket.onclose = () => {
-    socket = null
-    void patchState({ connected: false })
-  }
-
-  socket.onerror = () => {
-    socket?.close()
+async function syncFromDisk() {
+  if ((await getAccessState()) === 'granted') {
+    await reloadSnapshot()
   }
 }
 
-chrome.alarms.create('mocker-reconnect', { periodInMinutes: 0.5 })
+chrome.alarms.create('mocker-sync', { periodInMinutes: 0.5 })
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'mocker-reconnect') connect()
+  if (alarm.name === 'mocker-sync') void syncFromDisk()
 })
-chrome.runtime.onStartup.addListener(connect)
-chrome.runtime.onInstalled.addListener(connect)
-connect()
-
-const WRITE_TIMEOUT_MILLISECONDS = 5000
-
-const pendingWrites = new Map<string, (ack: unknown) => void>()
+chrome.runtime.onStartup.addListener(() => void syncFromDisk())
+chrome.runtime.onInstalled.addListener(() => void syncFromDisk())
+void syncFromDisk()
 
 const MAX_CAPTURED_REQUESTS = 50
 
@@ -87,9 +33,17 @@ function appendCapturedRequest(
   })
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === 'mocker:reconnect') {
-    connect()
+async function incrementMatchedCount(scenarioId: string) {
+  const { counts } = await chrome.storage.session.get('counts')
+  const current = (counts as Record<string, number> | undefined) ?? {}
+  await chrome.storage.session.set({
+    counts: { ...current, [scenarioId]: (current[scenarioId] ?? 0) + 1 },
+  })
+}
+
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type === 'mocker:sync') {
+    void syncFromDisk()
     return
   }
 
@@ -104,34 +58,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sender.origin ?? sender.url ?? '',
       sender.tab?.id,
     )
-    return
-  }
-
-  if (message?.type === 'mocker:write') {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      sendResponse({ ok: false, error: 'El daemon no está conectado' })
-      return
-    }
-    const requestId = crypto.randomUUID()
-    pendingWrites.set(requestId, sendResponse)
-    setTimeout(() => {
-      if (pendingWrites.delete(requestId)) {
-        sendResponse({
-          ok: false,
-          error:
-            'La CLI no ha respondido — probablemente es una versión antigua. Reiníciala: mocker <ruta-del-repo>',
-        })
-      }
-    }, WRITE_TIMEOUT_MILLISECONDS)
-    socket.send(JSON.stringify({ ...message.payload, requestId }))
-    return true
   }
 })
-
-async function incrementMatchedCount(scenarioId: string) {
-  const { counts } = await chrome.storage.session.get('counts')
-  const current = (counts as Record<string, number> | undefined) ?? {}
-  await chrome.storage.session.set({
-    counts: { ...current, [scenarioId]: (current[scenarioId] ?? 0) + 1 },
-  })
-}

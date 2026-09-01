@@ -12,6 +12,9 @@
         <span class="header__title">mocker</span>
       </span>
       <span class="header__side">
+        <button class="button button--small" id="import-project">
+          Importar proyecto
+        </button>
         <span class="header__status" id="connection-status"></span>
         <label class="header__mocking" for="global-toggle">Mocking</label>
         <input
@@ -23,6 +26,10 @@
       </span>
     </header>
     <main class="settings">
+      <p class="banner banner--action" id="access-banner" hidden>
+        <span id="access-banner-text"></span>
+        <button class="button button--primary" id="access-banner-action"></button>
+      </p>
       <p class="banner" id="stale-banner" hidden>
         Los ficheros han cambiado mientras editabas — guarda tu cambio o
         recarga la página para ver la última versión.

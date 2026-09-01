@@ -1,4 +1,15 @@
 import {
+  createScenario as createScenarioFile,
+  deleteScenario as deleteScenarioFile,
+  getAccessState,
+  pickProjectDirectory,
+  reloadSnapshot,
+  requestAccess,
+  updateProject,
+  updateScenario as updateScenarioFile,
+  type AccessState,
+} from '../lib/filesystem'
+import {
   EMPTY_STATE,
   isMockActive,
   selectedEnvironment,
@@ -11,14 +22,9 @@ import {
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']
 
-interface WriteResult {
-  ok: boolean
-  id?: string
-  error?: string
-}
-
 let hasUnsavedEdits = false
 let lastRenderedSnapshot = ''
+let accessState: AccessState = 'no-project'
 
 interface PendingFocus {
   scenarioId: string
@@ -120,10 +126,6 @@ async function getState(): Promise<MockerState> {
 async function patchState(patch: Partial<MockerState>) {
   const state = await getState()
   await chrome.storage.local.set({ state: { ...state, ...patch } })
-}
-
-function writeToDaemon(payload: object): Promise<WriteResult> {
-  return chrome.runtime.sendMessage({ type: 'mocker:write', payload })
 }
 
 function markEdited() {
@@ -519,9 +521,9 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
         .filter(({ name }) => name)
         .map(({ name, variables }) => [name, variables]),
     )
-    const result = await writeToDaemon({
-      type: 'project_update',
-      project: { name: nameInput.value.trim(), environments },
+    const result = await updateProject({
+      name: nameInput.value.trim(),
+      environments,
     })
     if (!result.ok) {
       errorMessage.textContent = result.error ?? 'Error desconocido'
@@ -635,11 +637,9 @@ function buildScenarioCard(
         mockReaders.get(mockEditor)!(),
       ),
     }
-    const result = await writeToDaemon(
-      scenario
-        ? { type: 'scenario_update', id: scenario.id, scenario: payload }
-        : { type: 'scenario_create', scenario: payload },
-    )
+    const result = scenario
+      ? await updateScenarioFile(scenario.id, payload)
+      : await createScenarioFile(payload)
     if (!result.ok) {
       errorMessage.textContent = result.error ?? 'Error desconocido'
       errorMessage.hidden = false
@@ -657,15 +657,10 @@ function buildScenarioCard(
     duplicateButton.className = 'button'
     duplicateButton.textContent = 'Duplicar'
     duplicateButton.addEventListener('click', async () => {
-      const result = await writeToDaemon({
-        type: 'scenario_create',
-        scenario: {
-          name: `${scenario.name} (copia)`,
-          ...(scenario.description
-            ? { description: scenario.description }
-            : {}),
-          mocks: scenario.mocks,
-        },
+      const result = await createScenarioFile({
+        name: `${scenario.name} (copia)`,
+        ...(scenario.description ? { description: scenario.description } : {}),
+        mocks: scenario.mocks,
       })
       if (!result.ok) {
         errorMessage.textContent = result.error ?? 'Error desconocido'
@@ -678,10 +673,7 @@ function buildScenarioCard(
     deleteButton.textContent = 'Eliminar'
     deleteButton.addEventListener('click', async () => {
       if (!confirm(`¿Eliminar el escenario "${scenario.name}"?`)) return
-      const result = await writeToDaemon({
-        type: 'scenario_delete',
-        id: scenario.id,
-      })
+      const result = await deleteScenarioFile(scenario.id)
       if (!result.ok) {
         errorMessage.textContent = result.error ?? 'Error desconocido'
         errorMessage.hidden = false
@@ -706,15 +698,69 @@ function buildScenarioCard(
   return card
 }
 
-function renderConnection(state: MockerState) {
+function renderConnection() {
   const status = document.getElementById('connection-status')!
-  status.textContent = state.connected ? '' : 'sin conexión'
-  status.title = state.connected
-    ? 'Conectado a la CLI de mocker'
-    : 'Arranca la CLI para cargar los escenarios: mocker <ruta-del-repo>'
-  status.className = state.connected
-    ? 'header__status header__status--connected'
-    : 'header__status header__status--disconnected'
+  if (accessState === 'granted') {
+    status.textContent = ''
+    status.title = 'Proyecto conectado'
+  } else if (accessState === 'needs-permission') {
+    status.textContent = 'reconectar'
+    status.title = 'Chrome ha caducado el permiso de la carpeta del proyecto'
+  } else {
+    status.textContent = 'sin proyecto'
+    status.title = 'Importa la carpeta .mocks de tu repo'
+  }
+  status.className =
+    accessState === 'granted'
+      ? 'header__status header__status--connected'
+      : 'header__status header__status--disconnected'
+}
+
+async function importProject() {
+  const result = await pickProjectDirectory()
+  if (!result.ok && result.error !== 'Selección cancelada') {
+    renderAccessBanner(result.error)
+    return
+  }
+  await render()
+}
+
+async function reconnectProject() {
+  const granted = await requestAccess()
+  if (!granted) {
+    renderAccessBanner('Chrome ha denegado el acceso a la carpeta')
+    return
+  }
+  await reloadSnapshot()
+  await render()
+}
+
+function renderAccessBanner(errorMessage?: string) {
+  const banner = document.getElementById('access-banner')!
+  const text = document.getElementById('access-banner-text')!
+  const action = document.getElementById(
+    'access-banner-action',
+  ) as HTMLButtonElement
+
+  if (accessState === 'granted' && !errorMessage) {
+    banner.hidden = true
+    return
+  }
+
+  banner.hidden = false
+  if (accessState === 'needs-permission') {
+    text.textContent =
+      errorMessage ??
+      'Chrome ha caducado el permiso de la carpeta del proyecto (pasa en cada sesión nueva del navegador).'
+    action.textContent = 'Reconectar carpeta'
+    action.onclick = () => void reconnectProject()
+  } else {
+    text.textContent =
+      errorMessage ??
+      'Ningún proyecto importado. Elige la carpeta .mocks de tu repo (o el repo que la contiene).'
+    action.textContent = 'Importar proyecto'
+    action.onclick = () => void importProject()
+  }
 }
 
 function buildRequestRow(
@@ -778,24 +824,18 @@ function buildRequestRow(
       } catch {
         // keep the raw url
       }
-      const result = await writeToDaemon({
-        type: 'scenario_update',
-        id: scenario.id,
-        scenario: {
-          name: scenario.name,
-          ...(scenario.description
-            ? { description: scenario.description }
-            : {}),
-          mocks: [
-            ...scenario.mocks,
-            {
-              method: request.method,
-              url: mockUrl,
-              status: request.status,
-              response: parseResponse(request.body ?? ''),
-            },
-          ],
-        },
+      const result = await updateScenarioFile(scenario.id, {
+        name: scenario.name,
+        ...(scenario.description ? { description: scenario.description } : {}),
+        mocks: [
+          ...scenario.mocks,
+          {
+            method: request.method,
+            url: mockUrl,
+            status: request.status,
+            response: parseResponse(request.body ?? ''),
+          },
+        ],
       })
       if (!result.ok) {
         errorMessage.textContent = result.error ?? 'Error desconocido'
@@ -901,8 +941,10 @@ function renderGlobalToggle(state: MockerState) {
 }
 
 async function render() {
-  const state = await getState()
-  renderConnection(state)
+  const [state, access] = await Promise.all([getState(), getAccessState()])
+  accessState = access
+  renderConnection()
+  renderAccessBanner()
   renderGlobalToggle(state)
   void renderNetworkPanel()
 
@@ -916,9 +958,10 @@ async function render() {
   const list = document.getElementById('scenario-list')!
   const emptyMessage = document.getElementById('empty-message')!
   emptyMessage.hidden = state.scenarios.length > 0
-  emptyMessage.textContent = state.connected
-    ? 'No hay escenarios. Crea el primero con "Nuevo escenario".'
-    : 'Arranca el daemon apuntando a un repo con .mocks/ para empezar.'
+  emptyMessage.textContent =
+    accessState === 'granted'
+      ? 'No hay escenarios. Crea el primero con "Nuevo escenario".'
+      : 'Importa la carpeta .mocks de tu repo para empezar.'
 
   list.replaceChildren(
     ...state.scenarios.map((scenario) => buildScenarioCard(state, scenario)),
@@ -957,7 +1000,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.state) return
   const state = changes.state.newValue as MockerState | undefined
   if (!state) return
-  renderConnection(state)
   renderGlobalToggle(state)
   if (snapshotKey(state) === lastRenderedSnapshot) return
   if (hasUnsavedEdits) {
@@ -967,6 +1009,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   void render()
 })
 
-void chrome.runtime.sendMessage({ type: 'mocker:reconnect' }).catch(() => {})
+document.getElementById('import-project')!.addEventListener('click', () => {
+  void importProject()
+})
 
-void render()
+void reloadSnapshot().then(() => render())

@@ -211,6 +211,13 @@ body {
   margin: 0 0 16px;
 }
 
+.banner--action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .scenario-cards {
   display: flex;
   flex-direction: column;
