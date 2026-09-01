@@ -7,5 +7,5 @@ environments:
     curation: https://curation.sta.monline
     catalog: https://catalog.sta.monline
   worktree:
-    curation: https://localhost:3000
-    catalog: https://localhost:3000/catalog-api
+    curation: ''
+    catalog: /catalog-api

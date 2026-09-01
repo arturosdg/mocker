@@ -36,6 +36,21 @@ function mockBody(mock: ResolvedMock): string {
     : JSON.stringify(mock.response ?? null)
 }
 
+function logMocked(mock: ResolvedMock, method: string, url: string) {
+  const time = new Date().toLocaleTimeString('es-ES', { hour12: false })
+  const statusStyle =
+    mock.status >= 400
+      ? 'color:#ff453a;font-weight:600'
+      : 'color:#34c759;font-weight:600'
+  console.log(
+    `%cmocker%c ${time} ${method.toUpperCase()} ${url} %c${mock.status}%c (${mock.scenarioId})`,
+    'background:#34c759;color:#fff;padding:1px 6px;border-radius:3px;font-weight:600',
+    'color:inherit',
+    statusStyle,
+    'color:#8e8e93',
+  )
+}
+
 const originalFetch = window.fetch.bind(window)
 
 window.fetch = async (input, init) => {
@@ -44,6 +59,7 @@ window.fetch = async (input, init) => {
   if (!mock) return originalFetch(input, init)
 
   reportMatched(mock)
+  logMocked(mock, request.method, request.url)
   if (mock.delay) {
     await new Promise((resolve) => setTimeout(resolve, mock.delay))
   }
@@ -88,6 +104,7 @@ XMLHttpRequest.prototype.send = function (
   if (!mock) return originalSend.call(this, body ?? null)
 
   reportMatched(mock)
+  logMocked(mock, request.method, new URL(request.url, location.href).href)
   const responseText = mockBody(mock)
   setTimeout(() => {
     Object.defineProperty(this, 'readyState', { value: 4 })
