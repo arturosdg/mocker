@@ -37,6 +37,13 @@ function connect() {
         scenarios: message.scenarios,
       })
     }
+    if (message.type === 'ack') {
+      const respond = pendingWrites.get(message.requestId as string)
+      if (respond) {
+        pendingWrites.delete(message.requestId as string)
+        respond(message)
+      }
+    }
   }
 
   socket.onclose = () => {
@@ -57,9 +64,30 @@ chrome.runtime.onStartup.addListener(connect)
 chrome.runtime.onInstalled.addListener(connect)
 connect()
 
-chrome.runtime.onMessage.addListener((message) => {
+const WRITE_TIMEOUT_MILLISECONDS = 5000
+
+const pendingWrites = new Map<string, (ack: unknown) => void>()
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'mocker:matched') {
     void incrementMatchedCount(message.scenarioId as string)
+    return
+  }
+
+  if (message?.type === 'mocker:write') {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      sendResponse({ ok: false, error: 'El daemon no está conectado' })
+      return
+    }
+    const requestId = crypto.randomUUID()
+    pendingWrites.set(requestId, sendResponse)
+    setTimeout(() => {
+      if (pendingWrites.delete(requestId)) {
+        sendResponse({ ok: false, error: 'El daemon no ha respondido' })
+      }
+    }, WRITE_TIMEOUT_MILLISECONDS)
+    socket.send(JSON.stringify({ ...message.payload, requestId }))
+    return true
   }
 })
 

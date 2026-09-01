@@ -79,9 +79,21 @@ el contador verde del popup son las señales de que el mock está funcionando.
 
 ## Roadmap
 
-- [x] Slice 1 — walking skeleton: daemon + popup con switches + intercepción fetch/XHR
-- [ ] Slice 2 — MCP server (`create_mock`, `activate_scenario`, `get_request_log`…)
-- [ ] Slice 3 — request log matched/unmatched visible desde CLI/MCP
-- [ ] Slice 4 — página de settings (editor en grande, escribe a los ficheros vía daemon)
-- [ ] Slice 5 — grabación de respuestas reales a fichero
-- [ ] Slice 6 — handshake con token entre extensión y daemon
+- [x] Fase 1 — walking skeleton: daemon + popup con switches + intercepción fetch/XHR
+- [x] Fase 2 — gestión manual de escenarios: settings page + API de escritura en el daemon
+- [ ] Fase 3 — MCP server (`create_scenario`, `activate_scenario`, `get_request_log`…)
+- [ ] Fase 4 — request log matched/unmatched visible desde CLI/MCP
+- [ ] Fase 5 — grabación de respuestas reales a fichero
+- [ ] Fase 6 — robustez: handshake con token, multi-proyecto, matching por query
+- [ ] Fase 7 — adopción: empaquetado, onboarding, `.mocks/` en un repo real
+
+## Settings page
+
+El engranaje del popup (o `chrome://extensions` → Mocker → Opciones) abre la
+página de configuración en pestaña completa: los escenarios como tarjetas
+editables (nombre, descripción, mocks con método/URL/status/delay/respuesta),
+crear, duplicar y eliminar. **Guardar escribe el YAML en el repo vía daemon**
+(verás el diff en `git status`) — la página no tiene almacenamiento propio: el
+watcher devuelve el cambio y todo queda en los ficheros. Si los ficheros
+cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte
+la edición.

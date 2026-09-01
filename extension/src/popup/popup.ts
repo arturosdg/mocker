@@ -116,6 +116,10 @@ async function render() {
   renderScenarios(state, counts)
 }
 
+document.getElementById('open-settings')!.addEventListener('click', () => {
+  void chrome.runtime.openOptionsPage()
+})
+
 document
   .getElementById('environment-select')!
   .addEventListener('change', (event) => {

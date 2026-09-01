@@ -46,6 +46,26 @@ body {
   letter-spacing: 0.02em;
 }
 
+.header__side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header__settings {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.header__settings:hover {
+  color: var(--text);
+}
+
 .header__status {
   display: inline-flex;
   align-items: center;
