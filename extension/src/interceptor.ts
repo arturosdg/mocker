@@ -9,17 +9,41 @@ window.addEventListener('message', (event) => {
   }
 })
 
-function findMock(method: string, url: string): ResolvedMock | undefined {
-  const parsed = new URL(url, location.href)
+function stripTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, '')
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function matchesUrl(mockUrl: string, parsed: URL): boolean {
   const candidates = [
     parsed.href,
     parsed.origin + parsed.pathname,
     parsed.pathname,
-  ]
+  ].map(stripTrailingSlashes)
+
+  if (mockUrl.includes('*')) {
+    const pattern = new RegExp(
+      `^${mockUrl.split('*').map(escapeRegExp).join('.*')}$`,
+    )
+    return candidates.some((candidate) => pattern.test(candidate))
+  }
+
+  const target = stripTrailingSlashes(mockUrl)
+  if (candidates.includes(target)) return true
+
+  const isFragment = !target.startsWith('http') && !target.startsWith('/')
+  return isFragment && stripTrailingSlashes(parsed.pathname).includes(target)
+}
+
+function findMock(method: string, url: string): ResolvedMock | undefined {
+  const parsed = new URL(url, location.href)
   return mocks.find(
     (mock) =>
       mock.method.toUpperCase() === method.toUpperCase() &&
-      candidates.includes(mock.url),
+      matchesUrl(mock.url, parsed),
   )
 }
 

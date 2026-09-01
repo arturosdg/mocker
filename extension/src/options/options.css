@@ -187,6 +187,10 @@ body {
   gap: 16px;
 }
 
+.scenario-cards--scenarios {
+  margin-top: 16px;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -328,6 +332,66 @@ body {
 .button--small {
   font-size: 11px;
   padding: 3px 8px;
+}
+
+.environment {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.environment__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.environment__name {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amber);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.environment__name:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+
+.environment__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.environment__row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.environment__row .field--variable {
+  flex: 0 0 180px;
+}
+
+.environment__row .button {
+  margin-bottom: 1px;
+}
+
+.environment .field input {
+  background-color: var(--surface);
 }
 
 .mock__row {

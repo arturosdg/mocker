@@ -1,0 +1,7 @@
+name: Lista vacía
+description: El listado no devuelve ningún elemento
+mocks:
+  - method: GET
+    url: '{{api}}/api/items/'
+    status: 200
+    response: []

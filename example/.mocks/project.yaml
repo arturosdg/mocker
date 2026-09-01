@@ -1,11 +1,9 @@
-name: mo.curation.web
+name: example-app
 targets:
   - https://localhost:3000
-  - https://localhost:3001
+  - http://localhost:3000
 environments:
   local:
-    curation: https://curation.sta.monline
-    catalog: https://catalog.sta.monline
-  worktree:
-    curation: ''
-    catalog: /catalog-api
+    api: ''
+  staging:
+    api: https://api.staging.example.com
