@@ -27,9 +27,11 @@ export interface ScenarioActivation {
 
 export interface MockerState {
   connected: boolean
+  enabled?: boolean
   project?: Project
   scenarios: Scenario[]
   activation: Record<string, ScenarioActivation>
+  mockActivation?: Record<string, Record<number, boolean>>
   environment?: string
 }
 
@@ -53,7 +55,17 @@ export function selectedEnvironment(state: MockerState): string | undefined {
   return names[0]
 }
 
+export function isMockActive(
+  state: MockerState,
+  scenarioId: string,
+  mockIndex: number,
+): boolean {
+  return state.mockActivation?.[scenarioId]?.[mockIndex] !== false
+}
+
 export function resolveActiveMocks(state: MockerState): ResolvedMock[] {
+  if (state.enabled === false) return []
+
   const environmentName = selectedEnvironment(state)
   const variables = environmentName
     ? (state.project?.environments?.[environmentName] ?? {})
@@ -68,11 +80,14 @@ export function resolveActiveMocks(state: MockerState): ResolvedMock[] {
     )
 
   return activeScenarios.flatMap((scenario) =>
-    scenario.mocks.map((mock) => ({
-      ...mock,
-      scenarioId: scenario.id,
-      url: substituteVariables(mock.url, variables),
-    })),
+    scenario.mocks
+      .map((mock, mockIndex) => ({ mock, mockIndex }))
+      .filter(({ mockIndex }) => isMockActive(state, scenario.id, mockIndex))
+      .map(({ mock }) => ({
+        ...mock,
+        scenarioId: scenario.id,
+        url: substituteVariables(mock.url, variables),
+      })),
   )
 }
 

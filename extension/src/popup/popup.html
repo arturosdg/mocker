@@ -12,7 +12,12 @@
       </span>
       <span class="header__side">
         <span class="header__status" id="connection-status"></span>
-        <button class="header__settings" id="open-settings" title="Configuración">⚙</button>
+        <input
+          type="checkbox"
+          class="toggle"
+          id="global-toggle"
+          title="Interceptación on/off"
+        />
       </span>
     </header>
     <div class="toolbar">
@@ -21,6 +26,11 @@
     </div>
     <ul class="scenarios" id="scenario-list"></ul>
     <p class="empty" id="empty-message" hidden></p>
+    <footer class="footer">
+      <button class="footer__settings" id="open-settings">
+        Configurar escenarios
+      </button>
+    </footer>
     <script src="popup.js"></script>
   </body>
 </html>
