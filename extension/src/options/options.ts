@@ -1,5 +1,6 @@
 import {
   EMPTY_STATE,
+  isMockActive,
   type Mock,
   type MockerState,
   type Scenario,
@@ -14,10 +15,17 @@ interface WriteResult {
 }
 
 let hasUnsavedEdits = false
+let lastRenderedSnapshot = ''
+const mockReaders = new WeakMap<Element, () => Mock>()
 
 async function getState(): Promise<MockerState> {
   const { state } = await chrome.storage.local.get('state')
   return (state as MockerState | undefined) ?? EMPTY_STATE
+}
+
+async function patchState(patch: Partial<MockerState>) {
+  const state = await getState()
+  await chrome.storage.local.set({ state: { ...state, ...patch } })
 }
 
 function writeToDaemon(payload: object): Promise<WriteResult> {
@@ -26,6 +34,10 @@ function writeToDaemon(payload: object): Promise<WriteResult> {
 
 function markEdited() {
   hasUnsavedEdits = true
+}
+
+function snapshotKey(state: MockerState): string {
+  return JSON.stringify({ project: state.project, scenarios: state.scenarios })
 }
 
 function parseResponse(text: string): unknown {
@@ -42,6 +54,11 @@ function formatResponse(response: unknown): string {
   if (response === null || response === undefined) return ''
   if (typeof response === 'string') return response
   return JSON.stringify(response, null, 2)
+}
+
+function autoGrow(textarea: HTMLTextAreaElement) {
+  textarea.style.height = 'auto'
+  textarea.style.height = `${textarea.scrollHeight + 2}px`
 }
 
 function buildField(
@@ -92,6 +109,46 @@ function buildMethodSelect(value: string): HTMLSelectElement {
   return select
 }
 
+function buildToggle(
+  checked: boolean,
+  onChange: (checked: boolean) => void,
+  modifier?: string,
+): HTMLInputElement {
+  const toggle = document.createElement('input')
+  toggle.type = 'checkbox'
+  toggle.className = modifier ? `toggle toggle--${modifier}` : 'toggle'
+  toggle.checked = checked
+  toggle.addEventListener('change', () => onChange(toggle.checked))
+  return toggle
+}
+
+async function toggleScenario(scenarioId: string, active: boolean) {
+  const state = await getState()
+  await patchState({
+    activation: {
+      ...state.activation,
+      [scenarioId]: { active, activatedAt: Date.now() },
+    },
+  })
+}
+
+async function toggleMock(
+  scenarioId: string,
+  mockIndex: number,
+  active: boolean,
+) {
+  const state = await getState()
+  await patchState({
+    mockActivation: {
+      ...(state.mockActivation ?? {}),
+      [scenarioId]: {
+        ...(state.mockActivation?.[scenarioId] ?? {}),
+        [mockIndex]: active,
+      },
+    },
+  })
+}
+
 function renumberMocks(mocksContainer: HTMLElement) {
   ;[...mocksContainer.children].forEach((mockEditor, index) => {
     const title = mockEditor.querySelector('.mock__title')
@@ -99,13 +156,40 @@ function renumberMocks(mocksContainer: HTMLElement) {
   })
 }
 
-function buildMockEditor(mock: Mock, mockNumber: number): HTMLElement {
+interface SavedMockContext {
+  state: MockerState
+  scenarioId: string
+  mockIndex: number
+}
+
+function buildMockEditor(
+  mock: Mock,
+  mockNumber: number,
+  saved?: SavedMockContext,
+): HTMLElement {
   const container = document.createElement('div')
   container.className = 'mock'
 
   const title = document.createElement('span')
   title.className = 'mock__title'
   title.textContent = `Mock ${mockNumber}`
+
+  const nameInput = buildTextInput(mock.name ?? '', 'Nombre (opcional)')
+  nameInput.className = 'mock__name'
+
+  const headerActions = document.createElement('span')
+  headerActions.className = 'mock__header-actions'
+
+  if (saved) {
+    headerActions.append(
+      buildToggle(
+        isMockActive(saved.state, saved.scenarioId, saved.mockIndex),
+        (checked) =>
+          void toggleMock(saved.scenarioId, saved.mockIndex, checked),
+        'small',
+      ),
+    )
+  }
 
   const removeButton = document.createElement('button')
   removeButton.className = 'button button--danger button--small'
@@ -116,10 +200,11 @@ function buildMockEditor(mock: Mock, mockNumber: number): HTMLElement {
     container.remove()
     if (mocksContainer) renumberMocks(mocksContainer)
   })
+  headerActions.append(removeButton)
 
   const header = document.createElement('div')
   header.className = 'mock__header'
-  header.append(title, removeButton)
+  header.append(title, nameInput, headerActions)
 
   const methodSelect = buildMethodSelect(mock.method)
   const urlInput = buildTextInput(mock.url, '{{host}}/api/…')
@@ -138,37 +223,51 @@ function buildMockEditor(mock: Mock, mockNumber: number): HTMLElement {
   const responseInput = document.createElement('textarea')
   responseInput.value = formatResponse(mock.response)
   responseInput.placeholder = '{ "campo": "valor" } — JSON o texto plano'
-  responseInput.addEventListener('input', markEdited)
+  responseInput.addEventListener('input', () => {
+    markEdited()
+    autoGrow(responseInput)
+  })
 
   container.append(header, firstRow, buildField('Respuesta', responseInput))
+
+  mockReaders.set(container, () => {
+    const delay = Number(delayInput.value)
+    const name = nameInput.value.trim()
+    return {
+      ...(name ? { name } : {}),
+      method: methodSelect.value,
+      url: urlInput.value.trim(),
+      status: Number(statusInput.value),
+      ...(delay > 0 ? { delay } : {}),
+      response: parseResponse(responseInput.value),
+    }
+  })
+
   return container
 }
 
-function readMock(container: HTMLElement): Mock {
-  const [methodSelect] = container.getElementsByTagName('select')
-  const [urlInput, statusInput, delayInput] =
-    container.getElementsByTagName('input')
-  const [responseInput] = container.getElementsByTagName('textarea')
-
-  const delay = Number(delayInput.value)
-  return {
-    method: methodSelect.value,
-    url: urlInput.value.trim(),
-    status: Number(statusInput.value),
-    ...(delay > 0 ? { delay } : {}),
-    response: parseResponse(responseInput.value),
-  }
-}
-
-function buildScenarioCard(scenario: Scenario | null): HTMLElement {
+function buildScenarioCard(
+  state: MockerState,
+  scenario: Scenario | null,
+): HTMLElement {
   const card = document.createElement('section')
   card.className = 'card'
 
   if (scenario) {
-    const idLabel = document.createElement('div')
+    const idLabel = document.createElement('span')
     idLabel.className = 'card__id'
     idLabel.textContent = `${scenario.id}.yaml`
-    card.append(idLabel)
+
+    const top = document.createElement('div')
+    top.className = 'card__top'
+    top.append(
+      idLabel,
+      buildToggle(
+        state.activation[scenario.id]?.active ?? false,
+        (checked) => void toggleScenario(scenario.id, checked),
+      ),
+    )
+    card.append(top)
   }
 
   const nameInput = buildTextInput(scenario?.name ?? '', 'Nombre del escenario')
@@ -192,7 +291,13 @@ function buildScenarioCard(scenario: Scenario | null): HTMLElement {
   mocksContainer.className = 'card__mocks'
   mocksContainer.replaceChildren(
     ...(scenario?.mocks ?? []).map((mock, index) =>
-      buildMockEditor(mock, index + 1),
+      buildMockEditor(
+        mock,
+        index + 1,
+        scenario
+          ? { state, scenarioId: scenario.id, mockIndex: index }
+          : undefined,
+      ),
     ),
   )
 
@@ -223,7 +328,7 @@ function buildScenarioCard(scenario: Scenario | null): HTMLElement {
         ? { description: descriptionInput.value.trim() }
         : {}),
       mocks: [...mocksContainer.children].map((mockEditor) =>
-        readMock(mockEditor as HTMLElement),
+        mockReaders.get(mockEditor)!(),
       ),
     }
     const result = await writeToDaemon(
@@ -305,9 +410,15 @@ function renderConnection(state: MockerState) {
     : 'header__status header__status--disconnected'
 }
 
+function renderGlobalToggle(state: MockerState) {
+  const toggle = document.getElementById('global-toggle') as HTMLInputElement
+  toggle.checked = state.enabled !== false
+}
+
 async function render() {
   const state = await getState()
   renderConnection(state)
+  renderGlobalToggle(state)
   document.getElementById('project-name')!.textContent =
     state.project?.name ?? '—'
 
@@ -319,23 +430,40 @@ async function render() {
     : 'Arranca el daemon apuntando a un repo con .mocks/ para empezar.'
 
   list.replaceChildren(
-    ...state.scenarios.map((scenario) => buildScenarioCard(scenario)),
+    ...state.scenarios.map((scenario) => buildScenarioCard(state, scenario)),
   )
+  list
+    .querySelectorAll('textarea')
+    .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
   document.getElementById('stale-banner')!.hidden = true
   hasUnsavedEdits = false
+  lastRenderedSnapshot = snapshotKey(state)
 }
 
 document.getElementById('new-scenario')!.addEventListener('click', () => {
   markEdited()
   const list = document.getElementById('scenario-list')!
-  list.prepend(buildScenarioCard(null))
+  const card = buildScenarioCard(EMPTY_STATE, null)
+  list.prepend(card)
+  card
+    .querySelectorAll('textarea')
+    .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
 })
+
+document
+  .getElementById('global-toggle')!
+  .addEventListener('change', (event) => {
+    void patchState({ enabled: (event.target as HTMLInputElement).checked })
+  })
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.state) return
+  const state = changes.state.newValue as MockerState | undefined
+  if (!state) return
+  renderConnection(state)
+  renderGlobalToggle(state)
+  if (snapshotKey(state) === lastRenderedSnapshot) return
   if (hasUnsavedEdits) {
-    const state = changes.state.newValue as MockerState | undefined
-    if (state) renderConnection(state)
     document.getElementById('stale-banner')!.hidden = false
     return
   }

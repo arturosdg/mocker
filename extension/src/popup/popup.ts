@@ -67,6 +67,7 @@ function buildToggle(
   toggle.type = 'checkbox'
   toggle.className = modifier ? `toggle toggle--${modifier}` : 'toggle'
   toggle.checked = checked
+  toggle.addEventListener('click', (event) => event.stopPropagation())
   toggle.addEventListener('change', () => onChange(toggle.checked))
   return toggle
 }
@@ -82,7 +83,9 @@ function buildMockRow(
 
   const label = document.createElement('span')
   label.className = 'mock-row__label'
-  label.textContent = `${mock.method.toUpperCase()} ${mock.url}`
+  label.textContent = mock.name
+    ? `${mock.method.toUpperCase()} · ${mock.name}`
+    : `${mock.method.toUpperCase()} ${mock.url}`
   label.title = `${mock.method.toUpperCase()} ${mock.url}`
 
   const status = document.createElement('span')
@@ -114,12 +117,8 @@ function buildScenarioItem(
 
   const row = document.createElement('div')
   row.className = 'scenario__row'
-
-  const expandButton = document.createElement('button')
-  expandButton.className = 'scenario__expand'
-  expandButton.textContent = expandedScenarios.has(scenario.id) ? '▾' : '▸'
-  expandButton.title = 'Ver mocks'
-  expandButton.addEventListener('click', () => {
+  row.title = 'Ver mocks'
+  row.addEventListener('click', () => {
     if (expandedScenarios.has(scenario.id)) {
       expandedScenarios.delete(scenario.id)
     } else {
@@ -127,6 +126,10 @@ function buildScenarioItem(
     }
     void render()
   })
+
+  const expandIndicator = document.createElement('span')
+  expandIndicator.className = 'scenario__expand'
+  expandIndicator.textContent = expandedScenarios.has(scenario.id) ? '▾' : '▸'
 
   const info = document.createElement('div')
   info.className = 'scenario__info'
@@ -148,7 +151,7 @@ function buildScenarioItem(
   badge.hidden = !count
 
   row.append(
-    expandButton,
+    expandIndicator,
     info,
     badge,
     buildToggle(
