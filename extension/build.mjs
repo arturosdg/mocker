@@ -18,5 +18,6 @@ await build({
 })
 
 cpSync('manifest.json', 'dist/manifest.json')
+cpSync('icons', 'dist/icons', { recursive: true })
 cpSync('src/popup/popup.html', 'dist/popup.html')
 cpSync('src/popup/popup.css', 'dist/popup.css')
