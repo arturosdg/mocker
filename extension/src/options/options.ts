@@ -1,6 +1,7 @@
 import {
   EMPTY_STATE,
   isMockActive,
+  selectedEnvironment,
   type CapturedRequest,
   type Mock,
   type MockerState,
@@ -442,6 +443,32 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   })
   syncEnvironmentsVisibility()
 
+  const environmentsRow = document.createElement('div')
+  environmentsRow.className = 'card__envs-row'
+  environmentsRow.append(environmentsTitle)
+
+  const environmentNames = Object.keys(project.environments ?? {})
+  if (environmentNames.length > 0) {
+    const activeSelect = document.createElement('select')
+    activeSelect.className = 'network__destination'
+    activeSelect.title =
+      'Entorno activo: resuelve las {{variables}} de las URLs de los mocks'
+    activeSelect.replaceChildren(
+      ...environmentNames.map((environmentName) => {
+        const option = document.createElement('option')
+        option.value = environmentName
+        option.textContent = `entorno: ${environmentName}`
+        return option
+      }),
+    )
+    const current = selectedEnvironment(state)
+    if (current) activeSelect.value = current
+    activeSelect.addEventListener('change', () => {
+      void patchState({ environment: activeSelect.value })
+    })
+    environmentsRow.append(activeSelect)
+  }
+
   const errorMessage = document.createElement('p')
   errorMessage.className = 'card__error'
   errorMessage.hidden = true
@@ -475,7 +502,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
 
   card.append(
     header,
-    environmentsTitle,
+    environmentsRow,
     environmentsContainer,
     addEnvironmentButton,
     errorMessage,

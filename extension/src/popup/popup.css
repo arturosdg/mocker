@@ -14,9 +14,24 @@
   display: none !important;
 }
 
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid var(--background);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 body {
   margin: 0;
-  width: 340px;
+  width: 400px;
   font-family: system-ui, sans-serif;
   font-size: 13px;
   color: var(--text);
@@ -63,17 +78,6 @@ body {
   cursor: pointer;
 }
 
-.toolbar__environment-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.toolbar__environment-label {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-}
 
 .header__status {
   display: inline-flex;
@@ -294,7 +298,21 @@ body {
 
 .network {
   border-top: 1px solid var(--border);
-  padding: 8px 14px;
+}
+
+.network__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 14px;
+}
+
+.network__header:hover {
+  background: var(--surface);
 }
 
 .network__title {
@@ -303,7 +321,67 @@ body {
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 6px;
+}
+
+.network__count {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 7px;
+}
+
+.network__body {
+  padding: 0 14px 10px;
+}
+
+.network__destination-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.network__destination-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.network__error {
+  color: var(--red);
+  font-size: 11px;
+  margin: 6px 0 0;
+}
+
+.capture-row__add {
+  flex-shrink: 0;
+  width: 22px;
+  height: 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.capture-row__add:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.capture-row__add:disabled {
+  color: var(--green);
+  border-color: var(--border);
+  cursor: default;
 }
 
 .network__list {
