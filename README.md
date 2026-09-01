@@ -94,8 +94,11 @@ el contador verde del popup son las señales de que el mock está funcionando.
 
 El engranaje del popup (o `chrome://extensions` → Mocker → Opciones) abre la
 página de configuración en pestaña completa: los escenarios como tarjetas
-editables (nombre, descripción, mocks con método/URL/status/delay/respuesta),
-crear, duplicar y eliminar. **Guardar escribe el YAML en el repo vía daemon**
+editables (nombre, descripción, mocks con nombre opcional,
+método/URL/status/delay/respuesta), crear, duplicar y eliminar. Los toggles de
+activación (global, escenario y mock) también viven aquí y aplican al
+instante, sin pasar por Guardar. Renombrar = editar el campo Nombre y guardar;
+el fichero conserva su id para que la activación no se pierda. **Guardar escribe el YAML en el repo vía daemon**
 (verás el diff en `git status`) — la página no tiene almacenamiento propio: el
 watcher devuelve el cambio y todo queda en los ficheros. Si los ficheros
 cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte

@@ -100,10 +100,14 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text);
-  background: var(--background);
+  background-color: var(--background);
   border: 1px solid var(--border);
   border-radius: 5px;
-  padding: 3px 6px;
+  padding: 3px 22px 3px 6px;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238e8e98' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
 }
 
 .scenarios {
@@ -127,21 +131,19 @@ body {
   align-items: center;
   gap: 8px;
   padding: 9px 14px 9px 6px;
+  cursor: pointer;
+}
+
+.scenario__row:hover {
+  background: var(--surface);
 }
 
 .scenario__expand {
   flex-shrink: 0;
   width: 22px;
-  background: none;
-  border: none;
   color: var(--text-dim);
   font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.scenario__expand:hover {
-  color: var(--text);
+  text-align: center;
 }
 
 .scenario__info {

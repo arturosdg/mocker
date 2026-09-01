@@ -1,4 +1,5 @@
 export interface Mock {
+  name?: string
   method: string
   url: string
   status: number
