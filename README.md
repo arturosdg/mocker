@@ -40,9 +40,11 @@ mocks:
     response: []
 ```
 
-Las variables `{{nombre}}` se resuelven con el entorno seleccionado en el
-popup, y sirven para no repetir hosts en cada mock: un mock, N entornos. Un
-valor vacío deja la URL como pathname a secas.
+Las variables `{{nombre}}` se resuelven con el entorno activo (se elige en la
+tarjeta de proyecto de la página de configuración) y sirven para no repetir
+hosts en cada mock: un mock, N entornos. Un valor vacío deja la URL como
+pathname a secas. Con el matching fuzzy rara vez las necesitarás — su caso
+fuerte es separar dos hosts que comparten pathname.
 
 ## Matching de URLs
 
@@ -75,7 +77,9 @@ un toggle por **escenario**, y — desplegando el escenario con ▸ — un toggl
 **mock** individual. Varios escenarios pueden estar activos a la vez y, si dos
 mockean la misma URL, gana el último activado. El contador ámbar de cada
 escenario indica cuántas requests ha matcheado en la sesión, y el botón
-inferior abre la página de configuración.
+inferior abre la página de configuración. La sección plegable **Red · esta
+pestaña** lista el tráfico capturado de la pestaña activa; el botón **+** de
+cada request la añade como mock al escenario elegido en «añadir a».
 
 ## Los mocks se ven en la Console
 

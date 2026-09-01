@@ -23,22 +23,27 @@
     </header>
     <div class="toolbar">
       <span class="toolbar__project" id="project-name"></span>
-      <span class="toolbar__environment-group" id="environment-group" hidden>
-        <label class="toolbar__environment-label" for="environment-select"
-          >entorno</label
-        >
-        <select
-          id="environment-select"
-          class="toolbar__environment"
-          title="Entorno activo: resuelve las {{variables}} de las URLs de los mocks"
-        ></select>
-      </span>
     </div>
     <ul class="scenarios" id="scenario-list"></ul>
     <p class="empty" id="empty-message" hidden></p>
     <section class="network" id="network-section" hidden>
-      <div class="network__title">Red · esta pestaña</div>
-      <ul class="network__list" id="network-list"></ul>
+      <button class="network__header" id="network-toggle">
+        <span class="network__title" id="network-title"></span>
+        <span class="network__count" id="network-count"></span>
+      </button>
+      <div class="network__body" id="network-body" hidden>
+        <div class="network__destination-row">
+          <label class="network__destination-label" for="network-destination"
+            >añadir a</label
+          >
+          <select
+            id="network-destination"
+            class="toolbar__environment"
+          ></select>
+        </div>
+        <ul class="network__list" id="network-list"></ul>
+        <p class="network__error" id="network-error" hidden></p>
+      </div>
     </section>
     <footer class="footer">
       <button class="footer__settings" id="open-settings">

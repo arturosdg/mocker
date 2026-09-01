@@ -1,8 +1,8 @@
 import {
   EMPTY_STATE,
   isMockActive,
-  selectedEnvironment,
   type CapturedRequest,
+  type Mock,
   type MockerState,
   type Scenario,
 } from '../lib/state'
@@ -11,6 +11,14 @@ const MAX_VISIBLE_CAPTURES = 20
 
 const expandedScenarios = new Set<string>()
 let activeTabId: number | undefined
+let networkOpen = false
+let destinationScenarioId = ''
+
+interface WriteResult {
+  ok: boolean
+  id?: string
+  error?: string
+}
 
 async function getState(): Promise<MockerState> {
   const { state } = await chrome.storage.local.get('state')
@@ -30,6 +38,10 @@ async function getCapturedRequests(): Promise<CapturedRequest[]> {
 async function patchState(patch: Partial<MockerState>) {
   const state = await getState()
   await chrome.storage.local.set({ state: { ...state, ...patch } })
+}
+
+function writeToDaemon(payload: object): Promise<WriteResult> {
+  return chrome.runtime.sendMessage({ type: 'mocker:write', payload })
 }
 
 async function toggleGlobal(enabled: boolean) {
@@ -61,10 +73,6 @@ async function toggleMock(
       },
     },
   })
-}
-
-async function selectEnvironment(environment: string) {
-  await patchState({ environment })
 }
 
 function buildToggle(
@@ -201,25 +209,8 @@ function renderGlobalToggle(state: MockerState) {
 }
 
 function renderToolbar(state: MockerState) {
-  const projectName = document.getElementById('project-name')!
-  projectName.textContent = state.project?.name ?? '—'
-
-  const select = document.getElementById(
-    'environment-select',
-  ) as HTMLSelectElement
-  const environments = Object.keys(state.project?.environments ?? {})
-  document.getElementById('environment-group')!.hidden =
-    environments.length === 0
-  select.replaceChildren(
-    ...environments.map((environmentName) => {
-      const option = document.createElement('option')
-      option.value = environmentName
-      option.textContent = environmentName
-      return option
-    }),
-  )
-  const current = selectedEnvironment(state)
-  if (current) select.value = current
+  document.getElementById('project-name')!.textContent =
+    state.project?.name ?? '—'
 }
 
 function renderScenarios(state: MockerState, counts: Record<string, number>) {
@@ -246,7 +237,57 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
   )
 }
 
-function buildCaptureRow(request: CapturedRequest): HTMLElement {
+function showNetworkError(message: string) {
+  const errorMessage = document.getElementById('network-error')!
+  errorMessage.textContent = message
+  errorMessage.hidden = false
+}
+
+async function addRequestToScenario(
+  state: MockerState,
+  request: CapturedRequest,
+): Promise<WriteResult> {
+  const scenario = state.scenarios.find(
+    (candidate) => candidate.id === destinationScenarioId,
+  )
+  if (!scenario) return { ok: false, error: 'Elige un escenario destino' }
+
+  let mockUrl = request.url
+  try {
+    mockUrl = new URL(request.url).pathname
+  } catch {
+    // keep the raw url
+  }
+  const newMock: Mock = {
+    method: request.method,
+    url: mockUrl,
+    status: request.status,
+    response: parseCapturedBody(request.body),
+  }
+  return writeToDaemon({
+    type: 'scenario_update',
+    id: scenario.id,
+    scenario: {
+      name: scenario.name,
+      ...(scenario.description ? { description: scenario.description } : {}),
+      mocks: [...scenario.mocks, newMock],
+    },
+  })
+}
+
+function parseCapturedBody(body: string | undefined): unknown {
+  if (!body?.trim()) return null
+  try {
+    return JSON.parse(body)
+  } catch {
+    return body
+  }
+}
+
+function buildCaptureRow(
+  state: MockerState,
+  request: CapturedRequest,
+): HTMLElement {
   const row = document.createElement('li')
   row.className = 'capture-row'
 
@@ -277,14 +318,29 @@ function buildCaptureRow(request: CapturedRequest): HTMLElement {
     badge.className = 'capture-row__mocked'
     badge.textContent = 'mock'
     row.append(badge)
+    return row
   }
+
+  const addButton = document.createElement('button')
+  addButton.className = 'capture-row__add'
+  addButton.textContent = '+'
+  addButton.title = 'Añadir como mock al escenario destino'
+  addButton.addEventListener('click', async () => {
+    const result = await addRequestToScenario(state, request)
+    if (!result.ok) {
+      showNetworkError(result.error ?? 'Error desconocido')
+      return
+    }
+    addButton.textContent = '✓'
+    addButton.disabled = true
+  })
+  row.append(addButton)
 
   return row
 }
 
-function renderNetwork(requests: CapturedRequest[]) {
+function renderNetwork(state: MockerState, requests: CapturedRequest[]) {
   const section = document.getElementById('network-section')!
-  const list = document.getElementById('network-list')!
   const tabRequests = requests
     .filter(
       (request) =>
@@ -293,7 +349,42 @@ function renderNetwork(requests: CapturedRequest[]) {
     .slice(0, MAX_VISIBLE_CAPTURES)
 
   section.hidden = tabRequests.length === 0
-  list.replaceChildren(...tabRequests.map(buildCaptureRow))
+  if (tabRequests.length === 0) return
+
+  document.getElementById('network-title')!.textContent =
+    `${networkOpen ? '▾' : '▸'} Red · esta pestaña`
+  document.getElementById('network-count')!.textContent = String(
+    tabRequests.length,
+  )
+  document.getElementById('network-body')!.hidden = !networkOpen
+  document.getElementById('network-error')!.hidden = true
+  if (!networkOpen) return
+
+  const destinationSelect = document.getElementById(
+    'network-destination',
+  ) as HTMLSelectElement
+  destinationSelect.replaceChildren(
+    ...state.scenarios.map((scenario) => {
+      const option = document.createElement('option')
+      option.value = scenario.id
+      option.textContent = scenario.name
+      return option
+    }),
+  )
+  if (
+    destinationScenarioId &&
+    state.scenarios.some((scenario) => scenario.id === destinationScenarioId)
+  ) {
+    destinationSelect.value = destinationScenarioId
+  } else {
+    destinationScenarioId = state.scenarios[0]?.id ?? ''
+  }
+
+  document
+    .getElementById('network-list')!
+    .replaceChildren(
+      ...tabRequests.map((request) => buildCaptureRow(state, request)),
+    )
 }
 
 async function render() {
@@ -306,32 +397,40 @@ async function render() {
   renderGlobalToggle(state)
   renderToolbar(state)
   renderScenarios(state, counts)
-  renderNetwork(requests)
+  renderNetwork(state, requests)
 }
 
 document.getElementById('open-settings')!.addEventListener('click', () => {
   void chrome.runtime.openOptionsPage()
 })
 
-document.getElementById('global-toggle')!.addEventListener('change', (event) => {
-  void toggleGlobal((event.target as HTMLInputElement).checked)
+document
+  .getElementById('global-toggle')!
+  .addEventListener('change', (event) => {
+    void toggleGlobal((event.target as HTMLInputElement).checked)
+  })
+
+document.getElementById('network-toggle')!.addEventListener('click', () => {
+  networkOpen = !networkOpen
+  void chrome.storage.local.set({ popupNetworkOpen: networkOpen })
+  void render()
 })
 
 document
-  .getElementById('environment-select')!
+  .getElementById('network-destination')!
   .addEventListener('change', (event) => {
-    void selectEnvironment((event.target as HTMLSelectElement).value)
+    destinationScenarioId = (event.target as HTMLSelectElement).value
   })
 
 chrome.storage.onChanged.addListener(() => {
   void render()
 })
 
-void chrome.tabs
-  .query({ active: true, currentWindow: true })
-  .then(([activeTab]) => {
-    activeTabId = activeTab?.id
-    void render()
-  })
-
-void render()
+void Promise.all([
+  chrome.tabs.query({ active: true, currentWindow: true }),
+  chrome.storage.local.get('popupNetworkOpen'),
+]).then(([[activeTab], { popupNetworkOpen }]) => {
+  activeTabId = activeTab?.id
+  networkOpen = popupNetworkOpen === true
+  void render()
+})
