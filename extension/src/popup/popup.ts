@@ -1,4 +1,11 @@
 import {
+  getAccessState,
+  reloadSnapshot,
+  updateScenario,
+  type AccessState,
+  type WriteResult,
+} from '../lib/filesystem'
+import {
   EMPTY_STATE,
   isMockActive,
   type CapturedRequest,
@@ -14,15 +21,10 @@ const addedRequests = new Map<string, { scenarioId: string; mockUrl: string }>()
 let activeTabId: number | undefined
 let networkOpen = false
 let destinationScenarioId = ''
+let accessState: AccessState = 'no-project'
 
 function requestKey(request: CapturedRequest): string {
   return `${request.at}|${request.method}|${request.url}`
-}
-
-interface WriteResult {
-  ok: boolean
-  id?: string
-  error?: string
 }
 
 async function getState(): Promise<MockerState> {
@@ -43,10 +45,6 @@ async function getCapturedRequests(): Promise<CapturedRequest[]> {
 async function patchState(patch: Partial<MockerState>) {
   const state = await getState()
   await chrome.storage.local.set({ state: { ...state, ...patch } })
-}
-
-function writeToDaemon(payload: object): Promise<WriteResult> {
-  return chrome.runtime.sendMessage({ type: 'mocker:write', payload })
 }
 
 async function toggleGlobal(enabled: boolean) {
@@ -197,15 +195,23 @@ function buildScenarioItem(
   return item
 }
 
-function renderConnection(state: MockerState) {
+function renderConnection() {
   const status = document.getElementById('connection-status')!
-  status.textContent = state.connected ? '' : 'sin conexión'
-  status.title = state.connected
-    ? 'Conectado a la CLI de mocker'
-    : 'Arranca la CLI para cargar los escenarios: mocker <ruta-del-repo>'
-  status.className = state.connected
-    ? 'header__status header__status--connected'
-    : 'header__status header__status--disconnected'
+  if (accessState === 'granted') {
+    status.textContent = ''
+    status.title = 'Proyecto conectado'
+  } else if (accessState === 'needs-permission') {
+    status.textContent = 'reconectar'
+    status.title =
+      'Chrome ha caducado el permiso de la carpeta — reconéctala en Configuración'
+  } else {
+    status.textContent = 'sin proyecto'
+    status.title = 'Importa la carpeta .mocks de tu repo desde Configuración'
+  }
+  status.className =
+    accessState === 'granted'
+      ? 'header__status header__status--connected'
+      : 'header__status header__status--disconnected'
 }
 
 function renderGlobalToggle(state: MockerState) {
@@ -228,9 +234,10 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
   if (state.scenarios.length === 0) {
     list.replaceChildren()
     emptyMessage.hidden = false
-    emptyMessage.textContent = state.connected
-      ? 'El proyecto no tiene escenarios en .mocks/scenarios/'
-      : 'Arranca el daemon: mocker <ruta-del-repo>'
+    emptyMessage.textContent =
+      accessState === 'granted'
+        ? 'El proyecto no tiene escenarios en .mocks/scenarios/'
+        : 'Importa la carpeta .mocks de tu repo en Configurar escenarios'
     return
   }
 
@@ -269,14 +276,10 @@ async function addRequestToScenario(
     status: request.status,
     response: parseCapturedBody(request.body),
   }
-  return writeToDaemon({
-    type: 'scenario_update',
-    id: scenario.id,
-    scenario: {
-      name: scenario.name,
-      ...(scenario.description ? { description: scenario.description } : {}),
-      mocks: [...scenario.mocks, newMock],
-    },
+  return updateScenario(scenario.id, {
+    name: scenario.name,
+    ...(scenario.description ? { description: scenario.description } : {}),
+    mocks: [...scenario.mocks, newMock],
   })
 }
 
@@ -419,12 +422,14 @@ function renderNetwork(state: MockerState, requests: CapturedRequest[]) {
 }
 
 async function render() {
-  const [state, counts, requests] = await Promise.all([
+  const [state, counts, requests, access] = await Promise.all([
     getState(),
     getCounts(),
     getCapturedRequests(),
+    getAccessState(),
   ])
-  renderConnection(state)
+  accessState = access
+  renderConnection()
   renderGlobalToggle(state)
   renderToolbar(state)
   renderScenarios(state, counts)
@@ -457,7 +462,7 @@ chrome.storage.onChanged.addListener(() => {
   void render()
 })
 
-void chrome.runtime.sendMessage({ type: 'mocker:reconnect' }).catch(() => {})
+void reloadSnapshot()
 
 void Promise.all([
   chrome.tabs.query({ active: true, currentWindow: true }),

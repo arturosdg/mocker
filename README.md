@@ -2,11 +2,11 @@
 
 Scenario-based network mocking driven by files in your repo. Los escenarios de
 mock viven como YAML en `.mocks/` dentro del repo de tu app (versionados con
-las ramas, compartidos por git); un daemon local los sirve por WebSocket y la
-extensión de Chrome los intercepta en el navegador.
+las ramas, compartidos por git); la extensión de Chrome lee y escribe esa
+carpeta directamente vía File System Access — sin procesos externos.
 
 ```
-.mocks/ (en el repo de tu app)  ←→  daemon (CLI)  ←ws→  extensión (Chrome MV3)
+.mocks/ (en el repo de tu app)  ←fs→  extensión (Chrome MV3)
 ```
 
 ## Estructura de un proyecto de mocks
@@ -61,15 +61,23 @@ No hace falta escribir el host. Una URL de mock matchea contra la URL completa,
 ```bash
 npm install
 npm run build
-
-# 1. Arranca el daemon apuntando al repo que tiene .mocks/
-node daemon/dist/cli.js ~/projects/mi-app   # o el bin `mocker` si lo enlazas
-
-# 2. Carga la extensión en Chrome
-#    chrome://extensions → modo desarrollador → "Cargar descomprimida" → extension/dist/
-
-# 3. Abre el popup, activa escenarios con el switch
 ```
+
+1. Carga la extensión en Chrome: `chrome://extensions` → modo desarrollador →
+   "Cargar descomprimida" → `extension/dist/`.
+2. Abre la página de configuración y pulsa **Importar proyecto**: elige la
+   carpeta `.mocks/` de tu repo (o el repo que la contiene). Eso carga el
+   proyecto y todos sus escenarios.
+3. Abre el popup y activa escenarios con el switch.
+
+Chrome caduca el permiso sobre la carpeta en cada sesión nueva del navegador:
+la extensión lo detecta y la página de configuración ofrece **Reconectar
+carpeta** (un clic). Los cambios hechos por fuera (un `git pull`, un agente
+editando los YAML) se recogen automáticamente cada 30 s y al abrir el popup o
+la configuración.
+
+> El paquete `daemon/` (CLI por WebSocket) ya no es necesario para la
+> extensión; queda como base para tooling de agentes (MCP) futuro.
 
 La activación es estado del navegador (no toca los ficheros) y tiene tres
 niveles en el popup: un **toggle global** de interceptación en la cabecera,
