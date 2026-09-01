@@ -41,10 +41,10 @@ function logMocked(mock: ResolvedMock, method: string, url: string) {
   const statusStyle =
     mock.status >= 400
       ? 'color:#ff453a;font-weight:600'
-      : 'color:#34c759;font-weight:600'
+      : 'color:#32d74b;font-weight:600'
   console.log(
     `%cmocker%c ${time} ${method.toUpperCase()} ${url} %c${mock.status}%c (${mock.scenarioId})`,
-    'background:#34c759;color:#fff;padding:1px 6px;border-radius:3px;font-weight:600',
+    'background:#ffa028;color:#17171c;padding:1px 6px;border-radius:3px;font-weight:700',
     'color:inherit',
     statusStyle,
     'color:#8e8e93',
