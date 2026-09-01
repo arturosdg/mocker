@@ -457,6 +457,8 @@ chrome.storage.onChanged.addListener(() => {
   void render()
 })
 
+void chrome.runtime.sendMessage({ type: 'mocker:reconnect' }).catch(() => {})
+
 void Promise.all([
   chrome.tabs.query({ active: true, currentWindow: true }),
   chrome.storage.local.get('popupNetworkOpen'),

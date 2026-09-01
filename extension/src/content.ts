@@ -18,21 +18,24 @@ async function readAndPush() {
   pushMocks(state as MockerState | undefined)
 }
 
+function safeSendMessage(message: object) {
+  try {
+    void chrome.runtime.sendMessage(message).catch(() => {})
+  } catch {
+    // extension reloaded: this orphaned content script can no longer talk
+    // to the service worker until the page is reloaded
+  }
+}
+
 window.addEventListener('message', (event) => {
   const data = event.data
   if (data?.source !== 'mocker-page') return
   if (data.type === 'ready') void readAndPush()
   if (data.type === 'matched') {
-    void chrome.runtime.sendMessage({
-      type: 'mocker:matched',
-      scenarioId: data.scenarioId,
-    })
+    safeSendMessage({ type: 'mocker:matched', scenarioId: data.scenarioId })
   }
   if (data.type === 'request') {
-    void chrome.runtime.sendMessage({
-      type: 'mocker:request',
-      request: data.request,
-    })
+    safeSendMessage({ type: 'mocker:request', request: data.request })
   }
 })
 
