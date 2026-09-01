@@ -342,7 +342,7 @@ body {
   color: var(--text);
 }
 
-.field input.input--var-ok {
+.field input.input--var-ok:focus {
   border-color: var(--green);
 }
 
@@ -352,6 +352,31 @@ body {
 
 .field input.input--var-error {
   border-color: var(--red);
+}
+
+.banner--error {
+  background: rgba(255, 69, 58, 0.12);
+  border-color: rgba(255, 69, 58, 0.4);
+  color: var(--red);
+}
+
+.banner__title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.banner__item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: left;
+  text-decoration: underline;
 }
 
 .card__mocks {

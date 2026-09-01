@@ -1002,6 +1002,62 @@ async function renderNetworkPanel() {
   container.replaceChildren(buildNetworkPanel(state, requests))
 }
 
+function renderValidationBanner(state: MockerState) {
+  const banner = document.getElementById('validation-banner')!
+
+  interface ValidationIssue {
+    scenarioId: string
+    mockIndex: number
+    level: 'warn' | 'error'
+    text: string
+  }
+  const issues: ValidationIssue[] = []
+  for (const scenario of state.scenarios) {
+    scenario.mocks.forEach((mock, index) => {
+      const result = validateUrlVariables(mock.url, state.project)
+      if (!result || result.level === 'ok') return
+      issues.push({
+        scenarioId: scenario.id,
+        mockIndex: index,
+        level: result.level,
+        text: `${scenario.name} · Mock ${index + 1}: ${result.messages.join('; ')}`,
+      })
+    })
+  }
+
+  banner.hidden = issues.length === 0
+  if (issues.length === 0) return
+
+  banner.classList.toggle(
+    'banner--error',
+    issues.some((issue) => issue.level === 'error'),
+  )
+
+  const title = document.createElement('div')
+  title.className = 'banner__title'
+  title.textContent = `Problemas detectados en las URLs (${issues.length}) — pulsa para revisar:`
+
+  banner.replaceChildren(
+    title,
+    ...issues.map((issue) => {
+      const item = document.createElement('button')
+      item.className = 'banner__item'
+      item.textContent = issue.text
+      item.addEventListener('click', () => {
+        const card = document.querySelector(
+          `[data-scenario-id="${CSS.escape(issue.scenarioId)}"]`,
+        )
+        const mock = card?.querySelectorAll('.mock')[issue.mockIndex] ?? card
+        if (!mock) return
+        mock.classList.add('mock--highlight')
+        mock.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        window.setTimeout(() => mock.classList.remove('mock--highlight'), 2000)
+      })
+      return item
+    }),
+  )
+}
+
 function renderGlobalToggle(state: MockerState) {
   const toggle = document.getElementById('global-toggle') as HTMLInputElement
   toggle.checked = state.enabled !== false
@@ -1012,6 +1068,7 @@ async function render() {
   accessState = access
   renderConnection()
   renderAccessBanner()
+  renderValidationBanner(state)
   renderGlobalToggle(state)
   void renderNetworkPanel()
 
