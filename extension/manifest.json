@@ -10,7 +10,7 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["storage", "alarms"],
-  "host_permissions": ["http://localhost/*", "https://localhost/*"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
@@ -29,12 +29,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://localhost/*", "https://localhost/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_start"
     },
     {
-      "matches": ["http://localhost/*", "https://localhost/*"],
+      "matches": ["<all_urls>"],
       "js": ["interceptor.js"],
       "run_at": "document_start",
       "world": "MAIN"

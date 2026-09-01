@@ -13,27 +13,29 @@
       </span>
       <span class="header__side">
         <span class="header__status" id="connection-status"></span>
+        <label class="header__mocking" for="global-toggle">Mocking</label>
         <input
           type="checkbox"
           class="toggle"
           id="global-toggle"
-          title="Interceptación on/off"
+          title="Enciende o apaga mocker por completo"
         />
       </span>
     </header>
     <main class="settings">
-      <div class="settings__toolbar">
-        <span class="settings__project" id="project-name"></span>
-        <button class="button button--primary" id="new-scenario">
-          Nuevo escenario
-        </button>
-      </div>
       <p class="banner" id="stale-banner" hidden>
         Los ficheros han cambiado mientras editabas — guarda tu cambio o
         recarga la página para ver la última versión.
       </p>
       <div class="scenario-cards" id="project-container"></div>
-      <div class="scenario-cards scenario-cards--scenarios" id="scenario-list"></div>
+      <div class="scenario-cards" id="network-container"></div>
+      <div class="section-header">
+        <h2 class="section-header__title">Escenarios</h2>
+        <button class="button button--primary" id="new-scenario">
+          Nuevo escenario
+        </button>
+      </div>
+      <div class="scenario-cards" id="scenario-list"></div>
       <p class="empty" id="empty-message" hidden></p>
     </main>
     <script src="options.js"></script>

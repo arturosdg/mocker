@@ -14,7 +14,7 @@ extensión de Chrome los intercepta en el navegador.
 ```
 tu-app/
 └── .mocks/
-    ├── project.yaml            # targets + entornos
+    ├── project.yaml            # nombre + entornos
     └── scenarios/
         └── lista-vacia.yaml    # un fichero = un escenario con sus mocks
 ```
@@ -22,12 +22,13 @@ tu-app/
 ```yaml
 # project.yaml
 name: mi-app
-targets:
-  - https://localhost:3000
 environments:
   local:
     api: https://api.sta.example
 ```
+
+La intercepción funciona en cualquier página con el toggle **Mocking**
+encendido — no hay que declarar hosts.
 
 ```yaml
 # scenarios/lista-vacia.yaml
@@ -109,8 +110,19 @@ método/URL/status/delay/respuesta), crear, duplicar y eliminar. Los toggles de
 activación (global, escenario y mock) también viven aquí y aplican al
 instante, sin pasar por Guardar. Renombrar = editar el campo Nombre y guardar;
 el fichero conserva su id para que la activación no se pierda. La tarjeta de
-proyecto edita `project.yaml`: nombre, targets y los entornos con sus
-variables. **Guardar escribe el YAML en el repo vía daemon**
+proyecto edita `project.yaml`: nombre y los entornos con sus variables
+(sección plegable). Las URLs con `{{variables}}` se validan en vivo: borde
+verde si la variable existe en todos los entornos, ámbar si falta en alguno y
+rojo si no existe en ninguno, con el detalle en el tooltip.
+
+## Panel de red
+
+En la misma página, la sección **Red** lista las últimas requests fetch/XHR
+observadas en las pestañas con Mocking encendido (método, URL, status, y
+`mock` si la sirvió mocker), con el body real capturado. Elige un escenario
+destino y pulsa **Añadir** para convertir cualquier request en un mock de ese
+escenario — URL como pathname y la respuesta real como body — sin escribir
+nada a mano. **Limpiar** vacía la lista. **Guardar escribe el YAML en el repo vía daemon**
 (verás el diff en `git status`) — la página no tiene almacenamiento propio: el
 watcher devuelve el cambio y todo queda en los ficheros. Si los ficheros
 cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte
