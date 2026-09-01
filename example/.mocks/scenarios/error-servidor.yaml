@@ -2,9 +2,9 @@ name: Error del servidor al guardar
 description: El POST falla con un error interno tras 400 ms
 mocks:
   - method: POST
-    url: '{{api}}/api/items/'
+    url: "{{api}}/api/items/"
     status: 500
     delay: 400
     response:
       errors:
-        - internal error
+        - internal errora
