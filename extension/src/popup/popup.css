@@ -378,10 +378,9 @@ body {
   color: var(--amber);
 }
 
-.capture-row__add:disabled {
-  color: var(--green);
-  border-color: var(--border);
-  cursor: default;
+.capture-row__add--added {
+  color: var(--amber);
+  border-color: var(--amber);
 }
 
 .network__list {
