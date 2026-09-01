@@ -1,0 +1,101 @@
+export interface Mock {
+  method: string
+  url: string
+  status: number
+  delay?: number
+  headers?: Record<string, string>
+  response?: unknown
+}
+
+export interface Scenario {
+  id: string
+  name: string
+  description?: string
+  mocks: Mock[]
+}
+
+export interface Project {
+  name: string
+  targets: string[]
+  environments?: Record<string, Record<string, string>>
+}
+
+export interface ScenarioActivation {
+  active: boolean
+  activatedAt: number
+}
+
+export interface MockerState {
+  connected: boolean
+  project?: Project
+  scenarios: Scenario[]
+  activation: Record<string, ScenarioActivation>
+  environment?: string
+}
+
+export interface ResolvedMock extends Mock {
+  scenarioId: string
+}
+
+export const EMPTY_STATE: MockerState = {
+  connected: false,
+  scenarios: [],
+  activation: {},
+}
+
+export function selectedEnvironment(state: MockerState): string | undefined {
+  const environments = state.project?.environments
+  if (!environments) return undefined
+  const names = Object.keys(environments)
+  if (state.environment && names.includes(state.environment)) {
+    return state.environment
+  }
+  return names[0]
+}
+
+export function resolveActiveMocks(state: MockerState): ResolvedMock[] {
+  const environmentName = selectedEnvironment(state)
+  const variables = environmentName
+    ? (state.project?.environments?.[environmentName] ?? {})
+    : {}
+
+  const activeScenarios = state.scenarios
+    .filter((scenario) => state.activation[scenario.id]?.active)
+    .sort(
+      (first, second) =>
+        state.activation[second.id].activatedAt -
+        state.activation[first.id].activatedAt,
+    )
+
+  return activeScenarios.flatMap((scenario) =>
+    scenario.mocks.map((mock) => ({
+      ...mock,
+      scenarioId: scenario.id,
+      url: substituteVariables(mock.url, variables),
+    })),
+  )
+}
+
+function substituteVariables(
+  url: string,
+  variables: Record<string, string>,
+): string {
+  return url.replace(
+    /\{\{(\w+)\}\}/g,
+    (match, name: string) => variables[name] ?? match,
+  )
+}
+
+export function isTargetOrigin(
+  state: MockerState,
+  origin: string,
+): boolean {
+  const targets = state.project?.targets ?? []
+  return targets.some((target) => {
+    try {
+      return new URL(target).origin === origin
+    } catch {
+      return false
+    }
+  })
+}

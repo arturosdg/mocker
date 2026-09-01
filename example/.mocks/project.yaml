@@ -1,0 +1,11 @@
+name: mo.curation.web
+targets:
+  - https://localhost:3000
+  - https://localhost:3001
+environments:
+  local:
+    curation: https://curation.sta.monline
+    catalog: https://catalog.sta.monline
+  worktree:
+    curation: https://localhost:3000
+    catalog: https://localhost:3000/catalog-api
