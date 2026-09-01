@@ -171,12 +171,27 @@ function buildField(
   return field
 }
 
+let snackbarTimeout: number | undefined
+
+function showSnackbar(message: string) {
+  const snackbar = document.getElementById('snackbar')!
+  snackbar.textContent = message
+  snackbar.hidden = false
+  window.clearTimeout(snackbarTimeout)
+  snackbarTimeout = window.setTimeout(() => {
+    snackbar.hidden = true
+  }, 2500)
+}
+
+function notifyStructuralEdit(container: HTMLElement) {
+  container.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 function buildTextInput(value: string, placeholder = ''): HTMLInputElement {
   const input = document.createElement('input')
   input.type = 'text'
   input.value = value
   input.placeholder = placeholder
-  input.addEventListener('input', markEdited)
   return input
 }
 
@@ -184,7 +199,6 @@ function buildNumberInput(value: number | undefined): HTMLInputElement {
   const input = document.createElement('input')
   input.type = 'number'
   input.value = value === undefined ? '' : String(value)
-  input.addEventListener('input', markEdited)
   return input
 }
 
@@ -201,7 +215,6 @@ function buildMethodSelect(value: string): HTMLSelectElement {
   select.value = HTTP_METHODS.includes(value.toUpperCase())
     ? value.toUpperCase()
     : 'GET'
-  select.addEventListener('change', markEdited)
   return select
 }
 
@@ -292,10 +305,16 @@ function buildMockEditor(
   removeButton.className = 'button button--danger button--small'
   removeButton.textContent = 'Quitar'
   removeButton.addEventListener('click', () => {
-    markEdited()
+    const label = nameInput.value.trim() || urlInput.value.trim() || 'este mock'
+    if (!confirm(`¿Quitar ${label} del escenario? Se aplica al guardar.`)) {
+      return
+    }
     const mocksContainer = container.parentElement
     container.remove()
-    if (mocksContainer) renumberMocks(mocksContainer)
+    if (mocksContainer) {
+      renumberMocks(mocksContainer)
+      notifyStructuralEdit(mocksContainer)
+    }
   })
   headerActions.append(removeButton)
 
@@ -364,8 +383,9 @@ function buildVariableRow(key: string, value: string): HTMLElement {
   removeButton.className = 'button button--danger button--small'
   removeButton.textContent = 'Quitar'
   removeButton.addEventListener('click', () => {
-    markEdited()
+    const parent = row.parentElement
     row.remove()
+    if (parent) notifyStructuralEdit(parent)
   })
 
   row.append(
@@ -391,8 +411,12 @@ function buildEnvironmentEditor(
   removeButton.className = 'button button--danger button--small'
   removeButton.textContent = 'Quitar entorno'
   removeButton.addEventListener('click', () => {
-    markEdited()
+    if (!confirm(`¿Quitar el entorno "${nameInput.value || 'sin nombre'}"? Se aplica al guardar.`)) {
+      return
+    }
+    const parent = container.parentElement
     container.remove()
+    if (parent) notifyStructuralEdit(parent)
   })
 
   const header = document.createElement('div')
@@ -411,8 +435,8 @@ function buildEnvironmentEditor(
   addVariableButton.className = 'button button--small'
   addVariableButton.textContent = 'Añadir variable'
   addVariableButton.addEventListener('click', () => {
-    markEdited()
     rowsContainer.append(buildVariableRow('', ''))
+    notifyStructuralEdit(rowsContainer)
   })
 
   container.append(header, rowsContainer, addVariableButton)
@@ -466,8 +490,11 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   addEnvironmentButton.className = 'button'
   addEnvironmentButton.textContent = 'Añadir entorno'
   addEnvironmentButton.addEventListener('click', () => {
-    markEdited()
+    if (!environmentsExpanded) {
+      environmentsExpanded = true
+    }
     environmentsContainer.append(buildEnvironmentEditor('', {}))
+    notifyStructuralEdit(environmentsContainer)
   })
 
   const syncEnvironmentsVisibility = () => {
@@ -488,7 +515,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   const environmentNames = Object.keys(project.environments ?? {})
   if (environmentNames.length > 0) {
     const activeSelect = document.createElement('select')
-    activeSelect.className = 'network__destination'
+    activeSelect.className = 'network__destination runtime-control'
     activeSelect.title =
       'Entorno activo: resuelve las {{variables}} de las URLs de los mocks'
     activeSelect.replaceChildren(
@@ -514,6 +541,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   const saveButton = document.createElement('button')
   saveButton.className = 'button button--primary'
   saveButton.textContent = 'Guardar'
+  saveButton.disabled = true
   saveButton.addEventListener('click', async () => {
     const environments = Object.fromEntries(
       [...environmentsContainer.children]
@@ -532,6 +560,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     }
     hasUnsavedEdits = false
     await render()
+    showSnackbar('Proyecto guardado')
   })
 
   const footer = document.createElement('div')
@@ -546,6 +575,21 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     errorMessage,
     footer,
   )
+
+  const handleCardEdit = (event: Event) => {
+    const target = event.target as HTMLElement
+    if (
+      target.classList.contains('toggle') ||
+      target.classList.contains('runtime-control')
+    ) {
+      return
+    }
+    markEdited()
+    saveButton.disabled = false
+  }
+  card.addEventListener('input', handleCardEdit)
+  card.addEventListener('change', handleCardEdit)
+
   return card
 }
 
@@ -614,7 +658,6 @@ function buildScenarioCard(
   addMockButton.className = 'button'
   addMockButton.textContent = 'Añadir mock'
   addMockButton.addEventListener('click', () => {
-    markEdited()
     mocksContainer.append(
       buildMockEditor(
         { method: 'GET', url: '', status: 200 },
@@ -622,11 +665,13 @@ function buildScenarioCard(
         state.project,
       ),
     )
+    notifyStructuralEdit(mocksContainer)
   })
 
   const saveButton = document.createElement('button')
   saveButton.className = 'button button--primary'
   saveButton.textContent = 'Guardar'
+  saveButton.disabled = true
   saveButton.addEventListener('click', async () => {
     const payload = {
       name: nameInput.value.trim(),
@@ -647,6 +692,7 @@ function buildScenarioCard(
     }
     hasUnsavedEdits = false
     await render()
+    showSnackbar(scenario ? 'Escenario guardado' : 'Escenario creado')
   })
 
   const footerActions = document.createElement('div')
@@ -665,7 +711,9 @@ function buildScenarioCard(
       if (!result.ok) {
         errorMessage.textContent = result.error ?? 'Error desconocido'
         errorMessage.hidden = false
+        return
       }
+      showSnackbar('Escenario duplicado')
     })
 
     const deleteButton = document.createElement('button')
@@ -677,7 +725,9 @@ function buildScenarioCard(
       if (!result.ok) {
         errorMessage.textContent = result.error ?? 'Error desconocido'
         errorMessage.hidden = false
+        return
       }
+      showSnackbar('Escenario eliminado')
     })
 
     footerActions.append(duplicateButton, deleteButton)
@@ -695,6 +745,21 @@ function buildScenarioCard(
     addMockButton,
     footer,
   )
+
+  const handleCardEdit = (event: Event) => {
+    const target = event.target as HTMLElement
+    if (
+      target.classList.contains('toggle') ||
+      target.classList.contains('runtime-control')
+    ) {
+      return
+    }
+    markEdited()
+    saveButton.disabled = false
+  }
+  card.addEventListener('input', handleCardEdit)
+  card.addEventListener('change', handleCardEdit)
+
   return card
 }
 
@@ -840,7 +905,9 @@ function buildRequestRow(
       if (!result.ok) {
         errorMessage.textContent = result.error ?? 'Error desconocido'
         errorMessage.hidden = false
+        return
       }
+      showSnackbar(`Mock añadido a ${scenario.name}`)
     })
     row.append(addButton)
   }

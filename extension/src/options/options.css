@@ -605,3 +605,19 @@ body {
   color: var(--text-dim);
   text-align: center;
 }
+
+.snackbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
