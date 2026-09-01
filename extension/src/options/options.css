@@ -370,6 +370,11 @@ body {
   background-color: var(--surface);
 }
 
+.mock--highlight {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber);
+}
+
 .mock__header {
   display: flex;
   align-items: center;

@@ -10,9 +10,14 @@ import {
 const MAX_VISIBLE_CAPTURES = 20
 
 const expandedScenarios = new Set<string>()
+const addedRequests = new Map<string, { scenarioId: string; mockUrl: string }>()
 let activeTabId: number | undefined
 let networkOpen = false
 let destinationScenarioId = ''
+
+function requestKey(request: CapturedRequest): string {
+  return `${request.at}|${request.method}|${request.url}`
+}
 
 interface WriteResult {
   ok: boolean
@@ -325,14 +330,40 @@ function buildCaptureRow(
   addButton.className = 'capture-row__add'
   addButton.textContent = '+'
   addButton.title = 'Añadir como mock al escenario destino'
+
+  const markAsAdded = () => {
+    addButton.textContent = '→'
+    addButton.classList.add('capture-row__add--added')
+    addButton.title = 'Añadido — ir a configurarlo'
+  }
+  if (addedRequests.has(requestKey(request))) markAsAdded()
+
   addButton.addEventListener('click', async () => {
+    const added = addedRequests.get(requestKey(request))
+    if (added) {
+      const query = new URLSearchParams({
+        scenario: added.scenarioId,
+        url: added.mockUrl,
+      })
+      void chrome.tabs.create({
+        url: `${chrome.runtime.getURL('options.html')}#${query}`,
+      })
+      return
+    }
+    const scenarioId = destinationScenarioId
     const result = await addRequestToScenario(state, request)
     if (!result.ok) {
       showNetworkError(result.error ?? 'Error desconocido')
       return
     }
-    addButton.textContent = '✓'
-    addButton.disabled = true
+    let mockUrl = request.url
+    try {
+      mockUrl = new URL(request.url).pathname
+    } catch {
+      // keep the raw url
+    }
+    addedRequests.set(requestKey(request), { scenarioId, mockUrl })
+    markAsAdded()
   })
   row.append(addButton)
 

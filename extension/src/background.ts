@@ -111,7 +111,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     pendingWrites.set(requestId, sendResponse)
     setTimeout(() => {
       if (pendingWrites.delete(requestId)) {
-        sendResponse({ ok: false, error: 'El daemon no ha respondido' })
+        sendResponse({
+          ok: false,
+          error:
+            'La CLI no ha respondido — probablemente es una versión antigua. Reiníciala: mocker <ruta-del-repo>',
+        })
       }
     }, WRITE_TIMEOUT_MILLISECONDS)
     socket.send(JSON.stringify({ ...message.payload, requestId }))

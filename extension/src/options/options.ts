@@ -19,6 +19,42 @@ interface WriteResult {
 
 let hasUnsavedEdits = false
 let lastRenderedSnapshot = ''
+
+interface PendingFocus {
+  scenarioId: string
+  mockUrl: string
+}
+
+function parsePendingFocus(): PendingFocus | null {
+  const hash = new URLSearchParams(location.hash.slice(1))
+  const scenarioId = hash.get('scenario')
+  const mockUrl = hash.get('url')
+  if (!scenarioId || !mockUrl) return null
+  return { scenarioId, mockUrl }
+}
+
+let pendingFocus: PendingFocus | null = parsePendingFocus()
+
+function applyPendingFocus() {
+  if (!pendingFocus) return
+  const card = document.querySelector<HTMLElement>(
+    `[data-scenario-id="${CSS.escape(pendingFocus.scenarioId)}"]`,
+  )
+  if (!card) return
+
+  const mockEditors = [...card.querySelectorAll<HTMLElement>('.mock')]
+  const target = mockEditors
+    .filter((mockEditor) => {
+      const mock = mockReaders.get(mockEditor)?.()
+      return mock?.url === pendingFocus?.mockUrl
+    })
+    .at(-1)
+
+  const highlighted = target ?? card
+  highlighted.classList.add('mock--highlight')
+  highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  pendingFocus = null
+}
 let environmentsExpanded = false
 let networkExpanded = false
 let destinationScenarioId = ''
@@ -519,6 +555,7 @@ function buildScenarioCard(
   card.className = 'card'
 
   if (scenario) {
+    card.dataset.scenarioId = scenario.id
     const idLabel = document.createElement('span')
     idLabel.className = 'card__id'
     idLabel.textContent = `${scenario.id}.yaml`
@@ -892,6 +929,7 @@ async function render() {
   document.getElementById('stale-banner')!.hidden = true
   hasUnsavedEdits = false
   lastRenderedSnapshot = snapshotKey(state)
+  applyPendingFocus()
 }
 
 document.getElementById('new-scenario')!.addEventListener('click', async () => {

@@ -22,10 +22,20 @@ export interface WriteRequest {
   project?: Project
 }
 
+const WRITE_TYPES = [
+  'scenario_create',
+  'scenario_update',
+  'scenario_delete',
+  'project_update',
+]
+
 export function applyWrite(
   mocksDirectory: string,
   request: WriteRequest,
 ): string {
+  if (!WRITE_TYPES.includes(request.type)) {
+    throw new Error(`Unknown write type "${request.type}"`)
+  }
   if (request.type === 'project_update') {
     const project = validateProject(request.project)
     writeFileSync(
