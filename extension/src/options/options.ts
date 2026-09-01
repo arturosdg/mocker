@@ -967,4 +967,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   void render()
 })
 
+void chrome.runtime.sendMessage({ type: 'mocker:reconnect' }).catch(() => {})
+
 void render()

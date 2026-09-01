@@ -88,6 +88,11 @@ function appendCapturedRequest(
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'mocker:reconnect') {
+    connect()
+    return
+  }
+
   if (message?.type === 'mocker:matched') {
     void incrementMatchedCount(message.scenarioId as string)
     return
