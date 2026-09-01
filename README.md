@@ -58,10 +58,13 @@ node daemon/dist/cli.js ~/projects/mi-app   # o el bin `mocker` si lo enlazas
 # 3. Abre el popup, activa escenarios con el switch
 ```
 
-La activación de escenarios es estado del navegador (no toca los ficheros):
-varios escenarios pueden estar activos a la vez y, si dos mockean la misma URL,
-gana el último activado. El contador verde de cada escenario indica cuántas
-requests ha matcheado en la sesión.
+La activación es estado del navegador (no toca los ficheros) y tiene tres
+niveles en el popup: un **toggle global** de interceptación en la cabecera,
+un toggle por **escenario**, y — desplegando el escenario con ▸ — un toggle por
+**mock** individual. Varios escenarios pueden estar activos a la vez y, si dos
+mockean la misma URL, gana el último activado. El contador ámbar de cada
+escenario indica cuántas requests ha matcheado en la sesión, y el botón
+inferior abre la página de configuración.
 
 ## Los mocks se ven en la Console
 
