@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>mocker — configuración</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="header">
+      <span class="header__brand">
+        <img class="header__logo" src="icons/icon-32.png" alt="" />
+        <span class="header__title">mocker</span>
+      </span>
+      <span class="header__status" id="connection-status"></span>
+    </header>
+    <main class="settings">
+      <div class="settings__toolbar">
+        <span class="settings__project" id="project-name"></span>
+        <button class="button button--primary" id="new-scenario">
+          Nuevo escenario
+        </button>
+      </div>
+      <p class="banner" id="stale-banner" hidden>
+        Los ficheros han cambiado mientras editabas — guarda tu cambio o
+        recarga la página para ver la última versión.
+      </p>
+      <div class="scenario-cards" id="scenario-list"></div>
+      <p class="empty" id="empty-message" hidden></p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
