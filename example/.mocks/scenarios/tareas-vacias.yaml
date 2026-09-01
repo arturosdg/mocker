@@ -1,7 +1,0 @@
-name: Lista de tareas vacía
-description: El listado de tareas de curación no devuelve ninguna
-mocks:
-  - method: GET
-    url: '{{curation}}/api/tasks/'
-    status: 200
-    response: []

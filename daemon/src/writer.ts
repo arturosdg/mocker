@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { stringify } from 'yaml'
 
-import type { Mock, Scenario } from './types.js'
+import type { Mock, Project, Scenario } from './types.js'
 
 export interface ScenarioPayload {
   name: string
@@ -12,15 +12,29 @@ export interface ScenarioPayload {
 
 export interface WriteRequest {
   requestId: string
-  type: 'scenario_create' | 'scenario_update' | 'scenario_delete'
+  type:
+    | 'scenario_create'
+    | 'scenario_update'
+    | 'scenario_delete'
+    | 'project_update'
   id?: string
   scenario?: ScenarioPayload
+  project?: Project
 }
 
 export function applyWrite(
   mocksDirectory: string,
   request: WriteRequest,
 ): string {
+  if (request.type === 'project_update') {
+    const project = validateProject(request.project)
+    writeFileSync(
+      path.join(mocksDirectory, 'project.yaml'),
+      stringify(project),
+    )
+    return 'project'
+  }
+
   const scenariosDirectory = path.join(mocksDirectory, 'scenarios')
   mkdirSync(scenariosDirectory, { recursive: true })
 
@@ -84,6 +98,20 @@ function validateScenario(
     }
   })
   return scenario
+}
+
+function validateProject(project: Project | undefined): Project {
+  if (!project?.name?.trim()) throw new Error('Project name is required')
+  if (!Array.isArray(project.targets)) {
+    throw new Error('Targets must be a list')
+  }
+  return {
+    name: project.name.trim(),
+    targets: project.targets.filter((target) => target.trim()),
+    ...(project.environments && Object.keys(project.environments).length > 0
+      ? { environments: project.environments }
+      : {}),
+  }
 }
 
 function slugify(name: string): string {

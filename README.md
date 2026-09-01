@@ -16,7 +16,7 @@ tu-app/
 └── .mocks/
     ├── project.yaml            # targets + entornos
     └── scenarios/
-        └── tareas-vacias.yaml  # un fichero = un escenario con sus mocks
+        └── lista-vacia.yaml    # un fichero = un escenario con sus mocks
 ```
 
 ```yaml
@@ -30,18 +30,28 @@ environments:
 ```
 
 ```yaml
-# scenarios/tareas-vacias.yaml
-name: Lista de tareas vacía
+# scenarios/lista-vacia.yaml
+name: Lista vacía
 mocks:
   - method: GET
-    url: '{{api}}/api/tasks/'
+    url: '{{api}}/api/items/'
     status: 200
     response: []
 ```
 
-Las URLs matchean por URL completa, por `origin + pathname` o por `pathname` a
-secas. Las variables `{{nombre}}` se resuelven con el entorno seleccionado en
-el popup.
+Las variables `{{nombre}}` se resuelven con el entorno seleccionado en el
+popup, y sirven para no repetir hosts en cada mock: un mock, N entornos. Un
+valor vacío deja la URL como pathname a secas.
+
+## Matching de URLs
+
+No hace falta escribir el host. Una URL de mock matchea contra la URL completa,
+`origin + pathname` o `pathname`, ignorando barras finales y la query string:
+
+- `/api/items/` matchea `https://cualquier-host/api/items/?page=2`
+- `api/items` (sin barra inicial) matchea como fragmento: cualquier pathname
+  que lo contenga
+- `*` es comodín: `/api/items/*/photos/` matchea cualquier id intermedio
 
 ## Uso
 
@@ -72,7 +82,7 @@ Cada request matcheada se logea en la consola de la página con la URL original
 intacta, al estilo de tweak:
 
 ```
-mocker 16:34:56 GET https://localhost:3001/api/tasks/ 200 (tareas-vacias)
+mocker 16:34:56 GET https://localhost:3000/api/items/ 200 (lista-vacia)
 ```
 
 El status va en verde (2xx/3xx) o rojo (4xx/5xx) y entre paréntesis aparece el
@@ -98,7 +108,9 @@ editables (nombre, descripción, mocks con nombre opcional,
 método/URL/status/delay/respuesta), crear, duplicar y eliminar. Los toggles de
 activación (global, escenario y mock) también viven aquí y aplican al
 instante, sin pasar por Guardar. Renombrar = editar el campo Nombre y guardar;
-el fichero conserva su id para que la activación no se pierda. **Guardar escribe el YAML en el repo vía daemon**
+el fichero conserva su id para que la activación no se pierda. La tarjeta de
+proyecto edita `project.yaml`: nombre, targets y los entornos con sus
+variables. **Guardar escribe el YAML en el repo vía daemon**
 (verás el diff en `git status`) — la página no tiene almacenamiento propio: el
 watcher devuelve el cambio y todo queda en los ficheros. Si los ficheros
 cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte

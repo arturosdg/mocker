@@ -10,6 +10,16 @@ export function startServer(mocksDirectory: string, port: number) {
 
   const server = new WebSocketServer({ port })
 
+  server.on('error', (error) => {
+    if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      console.error(
+        `[mocker] port ${port} is already in use — is another mocker daemon running?`,
+      )
+      process.exit(1)
+    }
+    throw error
+  })
+
   server.on('connection', (socket) => {
     console.log('[mocker] extension connected')
     socket.send(JSON.stringify(snapshot))
