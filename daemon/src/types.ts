@@ -17,7 +17,6 @@ export interface Scenario {
 
 export interface Project {
   name: string
-  targets: string[]
   environments?: Record<string, Record<string, string>>
 }
 

@@ -177,7 +177,10 @@ function buildScenarioItem(
 
 function renderConnection(state: MockerState) {
   const status = document.getElementById('connection-status')!
-  status.textContent = state.connected ? 'daemon' : 'sin daemon'
+  status.textContent = state.connected ? '' : 'sin conexión'
+  status.title = state.connected
+    ? 'Conectado a la CLI de mocker'
+    : 'Arranca la CLI para cargar los escenarios: mocker <ruta-del-repo>'
   status.className = state.connected
     ? 'header__status header__status--connected'
     : 'header__status header__status--disconnected'
@@ -196,7 +199,8 @@ function renderToolbar(state: MockerState) {
     'environment-select',
   ) as HTMLSelectElement
   const environments = Object.keys(state.project?.environments ?? {})
-  select.hidden = environments.length === 0
+  document.getElementById('environment-group')!.hidden =
+    environments.length === 0
   select.replaceChildren(
     ...environments.map((environmentName) => {
       const option = document.createElement('option')

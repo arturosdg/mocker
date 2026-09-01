@@ -1,7 +1,4 @@
 name: example-app
-targets:
-  - https://localhost:3000
-  - http://localhost:3000
 environments:
   local:
     api: ''

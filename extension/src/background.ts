@@ -68,9 +68,32 @@ const WRITE_TIMEOUT_MILLISECONDS = 5000
 
 const pendingWrites = new Map<string, (ack: unknown) => void>()
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+const MAX_CAPTURED_REQUESTS = 50
+
+let capturedRequestsQueue: Promise<void> = Promise.resolve()
+
+function appendCapturedRequest(request: object, origin: string) {
+  capturedRequestsQueue = capturedRequestsQueue.then(async () => {
+    const { requests } = await chrome.storage.session.get('requests')
+    const list = (requests as object[] | undefined) ?? []
+    list.unshift({ ...request, origin, at: Date.now() })
+    await chrome.storage.session.set({
+      requests: list.slice(0, MAX_CAPTURED_REQUESTS),
+    })
+  })
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === 'mocker:matched') {
     void incrementMatchedCount(message.scenarioId as string)
+    return
+  }
+
+  if (message?.type === 'mocker:request') {
+    appendCapturedRequest(
+      message.request as object,
+      sender.origin ?? sender.url ?? '',
+    )
     return
   }
 

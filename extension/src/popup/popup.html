@@ -12,17 +12,27 @@
       </span>
       <span class="header__side">
         <span class="header__status" id="connection-status"></span>
+        <label class="header__mocking" for="global-toggle">Mocking</label>
         <input
           type="checkbox"
           class="toggle"
           id="global-toggle"
-          title="Interceptación on/off"
+          title="Enciende o apaga mocker por completo"
         />
       </span>
     </header>
     <div class="toolbar">
       <span class="toolbar__project" id="project-name"></span>
-      <select id="environment-select" class="toolbar__environment" hidden></select>
+      <span class="toolbar__environment-group" id="environment-group" hidden>
+        <label class="toolbar__environment-label" for="environment-select"
+          >entorno</label
+        >
+        <select
+          id="environment-select"
+          class="toolbar__environment"
+          title="Entorno activo: resuelve las {{variables}} de las URLs de los mocks"
+        ></select>
+      </span>
     </div>
     <ul class="scenarios" id="scenario-list"></ul>
     <p class="empty" id="empty-message" hidden></p>

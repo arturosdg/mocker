@@ -1,11 +1,15 @@
 import type { ResolvedMock } from './lib/state'
 
+const MAX_CAPTURED_BODY_LENGTH = 32768
+
 let mocks: ResolvedMock[] = []
+let capturing = true
 
 window.addEventListener('message', (event) => {
   const data = event.data
   if (data?.source === 'mocker-extension' && data.type === 'mocks') {
     mocks = data.mocks as ResolvedMock[]
+    capturing = data.capturing === true
   }
 })
 
@@ -50,8 +54,27 @@ function findMock(method: string, url: string): ResolvedMock | undefined {
 function reportMatched(mock: ResolvedMock) {
   window.postMessage(
     { source: 'mocker-page', type: 'matched', scenarioId: mock.scenarioId },
-    location.origin,
+    '*',
   )
+}
+
+interface CapturedRequest {
+  method: string
+  url: string
+  status: number
+  mocked?: boolean
+  body?: string
+}
+
+function reportRequest(captured: CapturedRequest) {
+  window.postMessage(
+    { source: 'mocker-page', type: 'request', request: captured },
+    '*',
+  )
+}
+
+function absoluteUrl(url: string): string {
+  return new URL(url, location.href).href
 }
 
 function mockBody(mock: ResolvedMock): string {
@@ -75,15 +98,52 @@ function logMocked(mock: ResolvedMock, method: string, url: string) {
   )
 }
 
+async function captureFetchResponse(
+  method: string,
+  url: string,
+  clonedResponse: Response,
+) {
+  try {
+    const text = await clonedResponse.text()
+    reportRequest({
+      method,
+      url: absoluteUrl(url),
+      status: clonedResponse.status,
+      body: text.slice(0, MAX_CAPTURED_BODY_LENGTH),
+    })
+  } catch {
+    reportRequest({
+      method,
+      url: absoluteUrl(url),
+      status: clonedResponse.status,
+    })
+  }
+}
+
 const originalFetch = window.fetch.bind(window)
 
 window.fetch = async (input, init) => {
   const request = new Request(input, init)
   const mock = findMock(request.method, request.url)
-  if (!mock) return originalFetch(input, init)
+
+  if (!mock) {
+    const response = await originalFetch(input, init)
+    if (capturing) {
+      void captureFetchResponse(request.method, request.url, response.clone())
+    }
+    return response
+  }
 
   reportMatched(mock)
   logMocked(mock, request.method, request.url)
+  if (capturing) {
+    reportRequest({
+      method: request.method,
+      url: absoluteUrl(request.url),
+      status: mock.status,
+      mocked: true,
+    })
+  }
   if (mock.delay) {
     await new Promise((resolve) => setTimeout(resolve, mock.delay))
   }
@@ -125,10 +185,40 @@ XMLHttpRequest.prototype.send = function (
 ) {
   const request = this.mockerRequest
   const mock = request && findMock(request.method, request.url)
-  if (!mock) return originalSend.call(this, body ?? null)
+
+  if (!mock) {
+    if (capturing && request) {
+      this.addEventListener('load', () => {
+        let responseBody: string | undefined
+        try {
+          responseBody =
+            typeof this.responseText === 'string'
+              ? this.responseText.slice(0, MAX_CAPTURED_BODY_LENGTH)
+              : undefined
+        } catch {
+          responseBody = undefined
+        }
+        reportRequest({
+          method: request.method,
+          url: absoluteUrl(request.url),
+          status: this.status,
+          body: responseBody,
+        })
+      })
+    }
+    return originalSend.call(this, body ?? null)
+  }
 
   reportMatched(mock)
-  logMocked(mock, request.method, new URL(request.url, location.href).href)
+  logMocked(mock, request.method, absoluteUrl(request.url))
+  if (capturing) {
+    reportRequest({
+      method: request.method,
+      url: absoluteUrl(request.url),
+      status: mock.status,
+      mocked: true,
+    })
+  }
   const responseText = mockBody(mock)
   setTimeout(() => {
     Object.defineProperty(this, 'readyState', { value: 4 })
@@ -148,4 +238,4 @@ XMLHttpRequest.prototype.send = function (
   }, mock.delay ?? 0)
 }
 
-window.postMessage({ source: 'mocker-page', type: 'ready' }, location.origin)
+window.postMessage({ source: 'mocker-page', type: 'ready' }, '*')

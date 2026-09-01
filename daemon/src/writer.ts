@@ -102,12 +102,8 @@ function validateScenario(
 
 function validateProject(project: Project | undefined): Project {
   if (!project?.name?.trim()) throw new Error('Project name is required')
-  if (!Array.isArray(project.targets)) {
-    throw new Error('Targets must be a list')
-  }
   return {
     name: project.name.trim(),
-    targets: project.targets.filter((target) => target.trim()),
     ...(project.environments && Object.keys(project.environments).length > 0
       ? { environments: project.environments }
       : {}),

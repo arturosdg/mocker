@@ -1,17 +1,15 @@
-import {
-  isTargetOrigin,
-  resolveActiveMocks,
-  type MockerState,
-} from './lib/state'
+import { resolveActiveMocks, type MockerState } from './lib/state'
 
 function pushMocks(state: MockerState | undefined) {
   if (!state) return
-  const mocks = isTargetOrigin(state, location.origin)
-    ? resolveActiveMocks(state)
-    : []
   window.postMessage(
-    { source: 'mocker-extension', type: 'mocks', mocks },
-    location.origin,
+    {
+      source: 'mocker-extension',
+      type: 'mocks',
+      mocks: resolveActiveMocks(state),
+      capturing: state.enabled !== false,
+    },
+    '*',
   )
 }
 
@@ -28,6 +26,12 @@ window.addEventListener('message', (event) => {
     void chrome.runtime.sendMessage({
       type: 'mocker:matched',
       scenarioId: data.scenarioId,
+    })
+  }
+  if (data.type === 'request') {
+    void chrome.runtime.sendMessage({
+      type: 'mocker:request',
+      request: data.request,
     })
   }
 })

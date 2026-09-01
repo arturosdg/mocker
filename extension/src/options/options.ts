@@ -3,6 +3,7 @@ import {
   isMockActive,
   type Mock,
   type MockerState,
+  type Project,
   type Scenario,
 } from '../lib/state'
 
@@ -16,7 +17,72 @@ interface WriteResult {
 
 let hasUnsavedEdits = false
 let lastRenderedSnapshot = ''
+let environmentsExpanded = false
+let networkExpanded = false
+let destinationScenarioId = ''
 const mockReaders = new WeakMap<Element, () => Mock>()
+
+interface CapturedRequest {
+  method: string
+  url: string
+  status: number
+  mocked?: boolean
+  body?: string
+  origin: string
+  at: number
+}
+
+async function getCapturedRequests(): Promise<CapturedRequest[]> {
+  const { requests } = await chrome.storage.session.get('requests')
+  return (requests as CapturedRequest[] | undefined) ?? []
+}
+
+interface VariableValidation {
+  level: 'ok' | 'warn' | 'error'
+  messages: string[]
+}
+
+function validateUrlVariables(
+  url: string,
+  project?: Project,
+): VariableValidation | null {
+  const tokens = [...url.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1])
+  const environments = Object.entries(project?.environments ?? {})
+  if (tokens.length === 0 || environments.length === 0) return null
+
+  let level: VariableValidation['level'] = 'ok'
+  const messages: string[] = []
+  for (const token of [...new Set(tokens)]) {
+    const missingIn = environments
+      .filter(([, variables]) => !(token in variables))
+      .map(([name]) => name)
+    if (missingIn.length === environments.length) {
+      level = 'error'
+      messages.push(`{{${token}}} no existe en ningún entorno`)
+    } else if (missingIn.length > 0) {
+      if (level !== 'error') level = 'warn'
+      messages.push(`{{${token}}} falta en: ${missingIn.join(', ')}`)
+    }
+  }
+  return { level, messages }
+}
+
+function applyVariableValidation(
+  input: HTMLInputElement,
+  project?: Project,
+) {
+  input.classList.remove('input--var-ok', 'input--var-warn', 'input--var-error')
+  const result = validateUrlVariables(input.value, project)
+  if (!result) {
+    input.title = ''
+    return
+  }
+  input.classList.add(`input--var-${result.level}`)
+  input.title =
+    result.level === 'ok'
+      ? 'Variables resueltas en todos los entornos'
+      : result.messages.join('\n')
+}
 
 async function getState(): Promise<MockerState> {
   const { state } = await chrome.storage.local.get('state')
@@ -165,6 +231,7 @@ interface SavedMockContext {
 function buildMockEditor(
   mock: Mock,
   mockNumber: number,
+  project?: Project,
   saved?: SavedMockContext,
 ): HTMLElement {
   const container = document.createElement('div')
@@ -207,7 +274,11 @@ function buildMockEditor(
   header.append(title, nameInput, headerActions)
 
   const methodSelect = buildMethodSelect(mock.method)
-  const urlInput = buildTextInput(mock.url, '{{host}}/api/…')
+  const urlInput = buildTextInput(mock.url, '/api/… o {{variable}}/api/…')
+  urlInput.addEventListener('input', () =>
+    applyVariableValidation(urlInput, project),
+  )
+  applyVariableValidation(urlInput, project)
   const statusInput = buildNumberInput(mock.status)
   const delayInput = buildNumberInput(mock.delay)
 
@@ -344,24 +415,14 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
 
   const nameInput = buildTextInput(project.name, 'Nombre del proyecto')
 
-  const targetsInput = document.createElement('textarea')
-  targetsInput.value = project.targets.join('\n')
-  targetsInput.placeholder = 'https://localhost:3000 (una URL por línea)'
-  targetsInput.addEventListener('input', () => {
-    markEdited()
-    autoGrow(targetsInput)
-  })
-
   const header = document.createElement('div')
   header.className = 'card__header'
-  header.append(
-    buildField('Nombre', nameInput),
-    buildField('Targets (una URL por línea)', targetsInput),
-  )
+  header.append(buildField('Nombre', nameInput))
 
-  const environmentsTitle = document.createElement('div')
-  environmentsTitle.className = 'card__mocks-title'
-  environmentsTitle.textContent = 'Entornos'
+  const environmentCount = Object.keys(project.environments ?? {}).length
+
+  const environmentsTitle = document.createElement('button')
+  environmentsTitle.className = 'card__mocks-title card__mocks-title--toggle'
 
   const environmentsContainer = document.createElement('div')
   environmentsContainer.className = 'card__mocks'
@@ -379,6 +440,17 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     environmentsContainer.append(buildEnvironmentEditor('', {}))
   })
 
+  const syncEnvironmentsVisibility = () => {
+    environmentsTitle.textContent = `${environmentsExpanded ? '▾' : '▸'} Entornos (${environmentCount})`
+    environmentsContainer.hidden = !environmentsExpanded
+    addEnvironmentButton.hidden = !environmentsExpanded
+  }
+  environmentsTitle.addEventListener('click', () => {
+    environmentsExpanded = !environmentsExpanded
+    syncEnvironmentsVisibility()
+  })
+  syncEnvironmentsVisibility()
+
   const errorMessage = document.createElement('p')
   errorMessage.className = 'card__error'
   errorMessage.hidden = true
@@ -395,14 +467,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     )
     const result = await writeToDaemon({
       type: 'project_update',
-      project: {
-        name: nameInput.value.trim(),
-        targets: targetsInput.value
-          .split('\n')
-          .map((target) => target.trim())
-          .filter(Boolean),
-        environments,
-      },
+      project: { name: nameInput.value.trim(), environments },
     })
     if (!result.ok) {
       errorMessage.textContent = result.error ?? 'Error desconocido'
@@ -476,6 +541,7 @@ function buildScenarioCard(
       buildMockEditor(
         mock,
         index + 1,
+        state.project,
         scenario
           ? { state, scenarioId: scenario.id, mockIndex: index }
           : undefined,
@@ -496,6 +562,7 @@ function buildScenarioCard(
       buildMockEditor(
         { method: 'GET', url: '', status: 200 },
         mocksContainer.children.length + 1,
+        state.project,
       ),
     )
   })
@@ -586,10 +653,191 @@ function buildScenarioCard(
 
 function renderConnection(state: MockerState) {
   const status = document.getElementById('connection-status')!
-  status.textContent = state.connected ? 'daemon' : 'sin daemon'
+  status.textContent = state.connected ? '' : 'sin conexión'
+  status.title = state.connected
+    ? 'Conectado a la CLI de mocker'
+    : 'Arranca la CLI para cargar los escenarios: mocker <ruta-del-repo>'
   status.className = state.connected
     ? 'header__status header__status--connected'
     : 'header__status header__status--disconnected'
+}
+
+function buildRequestRow(
+  state: MockerState,
+  request: CapturedRequest,
+  errorMessage: HTMLElement,
+): HTMLElement {
+  const row = document.createElement('div')
+  row.className = 'request-row'
+
+  const time = document.createElement('span')
+  time.className = 'request-row__time'
+  time.textContent = new Date(request.at).toLocaleTimeString('es-ES', {
+    hour12: false,
+  })
+
+  const method = document.createElement('span')
+  method.className = 'request-row__method'
+  method.textContent = request.method.toUpperCase()
+
+  const url = document.createElement('span')
+  url.className = 'request-row__url'
+  try {
+    url.textContent = new URL(request.url).pathname
+  } catch {
+    url.textContent = request.url
+  }
+  url.title = request.url
+
+  const status = document.createElement('span')
+  status.className =
+    request.status >= 400
+      ? 'request-row__status request-row__status--error'
+      : 'request-row__status'
+  status.textContent = String(request.status)
+
+  row.append(time, method, url, status)
+
+  if (request.mocked) {
+    const badge = document.createElement('span')
+    badge.className = 'request-row__mocked'
+    badge.textContent = 'mock'
+    row.append(badge)
+  } else {
+    const addButton = document.createElement('button')
+    addButton.className = 'button button--small'
+    addButton.textContent = 'Añadir'
+    addButton.title = 'Añade esta request como mock al escenario destino'
+    addButton.addEventListener('click', async () => {
+      const scenario = state.scenarios.find(
+        (candidate) => candidate.id === destinationScenarioId,
+      )
+      if (!scenario) {
+        errorMessage.textContent = 'Elige un escenario destino'
+        errorMessage.hidden = false
+        return
+      }
+      let mockUrl = request.url
+      try {
+        mockUrl = new URL(request.url).pathname
+      } catch {
+        // keep the raw url
+      }
+      const result = await writeToDaemon({
+        type: 'scenario_update',
+        id: scenario.id,
+        scenario: {
+          name: scenario.name,
+          ...(scenario.description
+            ? { description: scenario.description }
+            : {}),
+          mocks: [
+            ...scenario.mocks,
+            {
+              method: request.method,
+              url: mockUrl,
+              status: request.status,
+              response: parseResponse(request.body ?? ''),
+            },
+          ],
+        },
+      })
+      if (!result.ok) {
+        errorMessage.textContent = result.error ?? 'Error desconocido'
+        errorMessage.hidden = false
+      }
+    })
+    row.append(addButton)
+  }
+
+  return row
+}
+
+function buildNetworkPanel(
+  state: MockerState,
+  requests: CapturedRequest[],
+): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'card'
+
+  const title = document.createElement('button')
+  title.className = 'card__mocks-title card__mocks-title--toggle'
+  title.textContent = `${networkExpanded ? '▾' : '▸'} Red (${requests.length} requests capturadas)`
+  title.addEventListener('click', () => {
+    networkExpanded = !networkExpanded
+    void renderNetworkPanel()
+  })
+  card.append(title)
+
+  if (!networkExpanded) return card
+
+  const errorMessage = document.createElement('p')
+  errorMessage.className = 'card__error'
+  errorMessage.hidden = true
+
+  const destinationLabel = document.createElement('span')
+  destinationLabel.className = 'field__label'
+  destinationLabel.textContent = 'Añadir a:'
+
+  const destinationSelect = document.createElement('select')
+  destinationSelect.className = 'network__destination'
+  destinationSelect.replaceChildren(
+    ...state.scenarios.map((scenario) => {
+      const option = document.createElement('option')
+      option.value = scenario.id
+      option.textContent = scenario.name
+      return option
+    }),
+  )
+  if (
+    destinationScenarioId &&
+    state.scenarios.some((scenario) => scenario.id === destinationScenarioId)
+  ) {
+    destinationSelect.value = destinationScenarioId
+  } else {
+    destinationScenarioId = state.scenarios[0]?.id ?? ''
+  }
+  destinationSelect.addEventListener('change', () => {
+    destinationScenarioId = destinationSelect.value
+  })
+
+  const clearButton = document.createElement('button')
+  clearButton.className = 'button button--small'
+  clearButton.textContent = 'Limpiar'
+  clearButton.addEventListener('click', () => {
+    void chrome.storage.session.set({ requests: [] })
+  })
+
+  const controls = document.createElement('div')
+  controls.className = 'network__controls'
+  controls.append(destinationLabel, destinationSelect, clearButton)
+  card.append(controls, errorMessage)
+
+  if (requests.length === 0) {
+    const empty = document.createElement('p')
+    empty.className = 'network__empty'
+    empty.textContent =
+      'Sin requests todavía. Navega por tu app con Mocking encendido y aparecerán aquí.'
+    card.append(empty)
+    return card
+  }
+
+  const rows = document.createElement('div')
+  rows.className = 'network__rows'
+  rows.replaceChildren(
+    ...requests.map((request) => buildRequestRow(state, request, errorMessage)),
+  )
+  card.append(rows)
+  return card
+}
+
+async function renderNetworkPanel() {
+  const [state, requests] = await Promise.all([
+    getState(),
+    getCapturedRequests(),
+  ])
+  const container = document.getElementById('network-container')!
+  container.replaceChildren(buildNetworkPanel(state, requests))
 }
 
 function renderGlobalToggle(state: MockerState) {
@@ -601,8 +849,7 @@ async function render() {
   const state = await getState()
   renderConnection(state)
   renderGlobalToggle(state)
-  document.getElementById('project-name')!.textContent =
-    state.project?.name ?? '—'
+  void renderNetworkPanel()
 
   const projectContainer = document.getElementById('project-container')!
   const projectCard = buildProjectCard(state)
@@ -629,10 +876,11 @@ async function render() {
   lastRenderedSnapshot = snapshotKey(state)
 }
 
-document.getElementById('new-scenario')!.addEventListener('click', () => {
+document.getElementById('new-scenario')!.addEventListener('click', async () => {
   markEdited()
+  const state = await getState()
   const list = document.getElementById('scenario-list')!
-  const card = buildScenarioCard(EMPTY_STATE, null)
+  const card = buildScenarioCard(state, null)
   list.prepend(card)
   card
     .querySelectorAll('textarea')
@@ -646,6 +894,10 @@ document
   })
 
 chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'session' && changes.requests) {
+    void renderNetworkPanel()
+    return
+  }
   if (area !== 'local' || !changes.state) return
   const state = changes.state.newValue as MockerState | undefined
   if (!state) return

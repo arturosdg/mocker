@@ -17,7 +17,6 @@ export interface Scenario {
 
 export interface Project {
   name: string
-  targets: string[]
   environments?: Record<string, Record<string, string>>
 }
 
@@ -102,16 +101,3 @@ function substituteVariables(
   )
 }
 
-export function isTargetOrigin(
-  state: MockerState,
-  origin: string,
-): boolean {
-  const targets = state.project?.targets ?? []
-  return targets.some((target) => {
-    try {
-      return new URL(target).origin === origin
-    } catch {
-      return false
-    }
-  })
-}
