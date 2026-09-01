@@ -2,11 +2,15 @@ import {
   EMPTY_STATE,
   isMockActive,
   selectedEnvironment,
+  type CapturedRequest,
   type MockerState,
   type Scenario,
 } from '../lib/state'
 
+const MAX_VISIBLE_CAPTURES = 20
+
 const expandedScenarios = new Set<string>()
+let activeTabId: number | undefined
 
 async function getState(): Promise<MockerState> {
   const { state } = await chrome.storage.local.get('state')
@@ -16,6 +20,11 @@ async function getState(): Promise<MockerState> {
 async function getCounts(): Promise<Record<string, number>> {
   const { counts } = await chrome.storage.session.get('counts')
   return (counts as Record<string, number> | undefined) ?? {}
+}
+
+async function getCapturedRequests(): Promise<CapturedRequest[]> {
+  const { requests } = await chrome.storage.session.get('requests')
+  return (requests as CapturedRequest[] | undefined) ?? []
 }
 
 async function patchState(patch: Partial<MockerState>) {
@@ -237,12 +246,67 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
   )
 }
 
+function buildCaptureRow(request: CapturedRequest): HTMLElement {
+  const row = document.createElement('li')
+  row.className = 'capture-row'
+
+  const method = document.createElement('span')
+  method.className = 'capture-row__method'
+  method.textContent = request.method.toUpperCase()
+
+  const url = document.createElement('span')
+  url.className = 'capture-row__url'
+  try {
+    url.textContent = new URL(request.url).pathname
+  } catch {
+    url.textContent = request.url
+  }
+  url.title = request.url
+
+  const status = document.createElement('span')
+  status.className =
+    request.status >= 400
+      ? 'capture-row__status capture-row__status--error'
+      : 'capture-row__status'
+  status.textContent = String(request.status)
+
+  row.append(method, url, status)
+
+  if (request.mocked) {
+    const badge = document.createElement('span')
+    badge.className = 'capture-row__mocked'
+    badge.textContent = 'mock'
+    row.append(badge)
+  }
+
+  return row
+}
+
+function renderNetwork(requests: CapturedRequest[]) {
+  const section = document.getElementById('network-section')!
+  const list = document.getElementById('network-list')!
+  const tabRequests = requests
+    .filter(
+      (request) =>
+        request.tabId !== undefined && request.tabId === activeTabId,
+    )
+    .slice(0, MAX_VISIBLE_CAPTURES)
+
+  section.hidden = tabRequests.length === 0
+  list.replaceChildren(...tabRequests.map(buildCaptureRow))
+}
+
 async function render() {
-  const [state, counts] = await Promise.all([getState(), getCounts()])
+  const [state, counts, requests] = await Promise.all([
+    getState(),
+    getCounts(),
+    getCapturedRequests(),
+  ])
   renderConnection(state)
   renderGlobalToggle(state)
   renderToolbar(state)
   renderScenarios(state, counts)
+  renderNetwork(requests)
 }
 
 document.getElementById('open-settings')!.addEventListener('click', () => {
@@ -262,5 +326,12 @@ document
 chrome.storage.onChanged.addListener(() => {
   void render()
 })
+
+void chrome.tabs
+  .query({ active: true, currentWindow: true })
+  .then(([activeTab]) => {
+    activeTabId = activeTab?.id
+    void render()
+  })
 
 void render()

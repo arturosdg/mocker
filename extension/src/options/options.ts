@@ -1,6 +1,7 @@
 import {
   EMPTY_STATE,
   isMockActive,
+  type CapturedRequest,
   type Mock,
   type MockerState,
   type Project,
@@ -21,16 +22,6 @@ let environmentsExpanded = false
 let networkExpanded = false
 let destinationScenarioId = ''
 const mockReaders = new WeakMap<Element, () => Mock>()
-
-interface CapturedRequest {
-  method: string
-  url: string
-  status: number
-  mocked?: boolean
-  body?: string
-  origin: string
-  at: number
-}
 
 async function getCapturedRequests(): Promise<CapturedRequest[]> {
   const { requests } = await chrome.storage.session.get('requests')

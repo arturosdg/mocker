@@ -72,11 +72,15 @@ const MAX_CAPTURED_REQUESTS = 50
 
 let capturedRequestsQueue: Promise<void> = Promise.resolve()
 
-function appendCapturedRequest(request: object, origin: string) {
+function appendCapturedRequest(
+  request: object,
+  origin: string,
+  tabId: number | undefined,
+) {
   capturedRequestsQueue = capturedRequestsQueue.then(async () => {
     const { requests } = await chrome.storage.session.get('requests')
     const list = (requests as object[] | undefined) ?? []
-    list.unshift({ ...request, origin, at: Date.now() })
+    list.unshift({ ...request, origin, at: Date.now(), tabId })
     await chrome.storage.session.set({
       requests: list.slice(0, MAX_CAPTURED_REQUESTS),
     })
@@ -93,6 +97,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     appendCapturedRequest(
       message.request as object,
       sender.origin ?? sender.url ?? '',
+      sender.tab?.id,
     )
     return
   }

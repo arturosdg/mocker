@@ -39,6 +39,17 @@ export interface ResolvedMock extends Mock {
   scenarioId: string
 }
 
+export interface CapturedRequest {
+  method: string
+  url: string
+  status: number
+  mocked?: boolean
+  body?: string
+  origin: string
+  at: number
+  tabId?: number
+}
+
 export const EMPTY_STATE: MockerState = {
   connected: false,
   scenarios: [],
