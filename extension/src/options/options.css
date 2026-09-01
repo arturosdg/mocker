@@ -189,12 +189,54 @@ body {
   border-color: var(--amber);
 }
 
+.card__mocks-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 4px 0 8px;
+}
+
+.card__mocks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .mock {
-  border-top: 1px solid var(--border);
-  padding: 12px 0;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.mock .field input,
+.mock .field textarea,
+.mock .field select {
+  background: var(--surface);
+}
+
+.mock__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mock__title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.button--small {
+  font-size: 11px;
+  padding: 3px 8px;
 }
 
 .mock__row {
@@ -209,10 +251,6 @@ body {
 .mock__row .field--status,
 .mock__row .field--delay {
   flex: 0 0 90px;
-}
-
-.mock__remove {
-  align-self: flex-end;
 }
 
 .card__footer {

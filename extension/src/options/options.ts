@@ -92,9 +92,34 @@ function buildMethodSelect(value: string): HTMLSelectElement {
   return select
 }
 
-function buildMockEditor(mock: Mock): HTMLElement {
+function renumberMocks(mocksContainer: HTMLElement) {
+  ;[...mocksContainer.children].forEach((mockEditor, index) => {
+    const title = mockEditor.querySelector('.mock__title')
+    if (title) title.textContent = `Mock ${index + 1}`
+  })
+}
+
+function buildMockEditor(mock: Mock, mockNumber: number): HTMLElement {
   const container = document.createElement('div')
   container.className = 'mock'
+
+  const title = document.createElement('span')
+  title.className = 'mock__title'
+  title.textContent = `Mock ${mockNumber}`
+
+  const removeButton = document.createElement('button')
+  removeButton.className = 'button button--danger button--small'
+  removeButton.textContent = 'Quitar'
+  removeButton.addEventListener('click', () => {
+    markEdited()
+    const mocksContainer = container.parentElement
+    container.remove()
+    if (mocksContainer) renumberMocks(mocksContainer)
+  })
+
+  const header = document.createElement('div')
+  header.className = 'mock__header'
+  header.append(title, removeButton)
 
   const methodSelect = buildMethodSelect(mock.method)
   const urlInput = buildTextInput(mock.url, '{{host}}/api/…')
@@ -115,19 +140,7 @@ function buildMockEditor(mock: Mock): HTMLElement {
   responseInput.placeholder = '{ "campo": "valor" } — JSON o texto plano'
   responseInput.addEventListener('input', markEdited)
 
-  const removeButton = document.createElement('button')
-  removeButton.className = 'button button--danger mock__remove'
-  removeButton.textContent = 'Quitar mock'
-  removeButton.addEventListener('click', () => {
-    markEdited()
-    container.remove()
-  })
-
-  container.append(
-    firstRow,
-    buildField('Respuesta', responseInput),
-    removeButton,
-  )
+  container.append(header, firstRow, buildField('Respuesta', responseInput))
   return container
 }
 
@@ -171,9 +184,16 @@ function buildScenarioCard(scenario: Scenario | null): HTMLElement {
     buildField('Descripción', descriptionInput),
   )
 
+  const mocksTitle = document.createElement('div')
+  mocksTitle.className = 'card__mocks-title'
+  mocksTitle.textContent = 'Mocks'
+
   const mocksContainer = document.createElement('div')
+  mocksContainer.className = 'card__mocks'
   mocksContainer.replaceChildren(
-    ...(scenario?.mocks ?? []).map((mock) => buildMockEditor(mock)),
+    ...(scenario?.mocks ?? []).map((mock, index) =>
+      buildMockEditor(mock, index + 1),
+    ),
   )
 
   const errorMessage = document.createElement('p')
@@ -186,7 +206,10 @@ function buildScenarioCard(scenario: Scenario | null): HTMLElement {
   addMockButton.addEventListener('click', () => {
     markEdited()
     mocksContainer.append(
-      buildMockEditor({ method: 'GET', url: '', status: 200 }),
+      buildMockEditor(
+        { method: 'GET', url: '', status: 200 },
+        mocksContainer.children.length + 1,
+      ),
     )
   })
 
@@ -263,7 +286,14 @@ function buildScenarioCard(scenario: Scenario | null): HTMLElement {
   footer.className = 'card__footer'
   footer.append(footerActions, saveButton)
 
-  card.append(header, mocksContainer, errorMessage, addMockButton, footer)
+  card.append(
+    header,
+    mocksTitle,
+    mocksContainer,
+    errorMessage,
+    addMockButton,
+    footer,
+  )
   return card
 }
 
