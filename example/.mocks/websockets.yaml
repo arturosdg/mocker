@@ -1,0 +1,8 @@
+messages:
+  - name: Item count push
+    channel: items:demo
+    data:
+      count: 2
+  - name: Refresh signal (raw frame)
+    data:
+      type: refresh
