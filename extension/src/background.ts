@@ -3,6 +3,56 @@ import {
   reloadSnapshot,
   writeRuntimeRequestsLog,
 } from './lib/filesystem'
+import { isOriginDisabled, type MockerState } from './lib/state'
+
+const ICON_ON = {
+  16: 'icons/icon-16.png',
+  32: 'icons/icon-32.png',
+  48: 'icons/icon-48.png',
+}
+const ICON_OFF = {
+  16: 'icons/icon-off-16.png',
+  32: 'icons/icon-off-32.png',
+  48: 'icons/icon-off-48.png',
+}
+
+async function updateActionIcon(tabId: number, url: string | undefined) {
+  let disabled = false
+  if (url && /^https?:/.test(url)) {
+    const { state } = await chrome.storage.local.get('state')
+    disabled = state
+      ? isOriginDisabled(state as MockerState, new URL(url).origin)
+      : false
+  }
+  try {
+    await chrome.action.setIcon({ tabId, path: disabled ? ICON_OFF : ICON_ON })
+  } catch {
+    // the tab may be gone by now
+  }
+}
+
+async function updateAllActionIcons() {
+  const tabs = await chrome.tabs.query({})
+  for (const tab of tabs) {
+    if (tab.id !== undefined) void updateActionIcon(tab.id, tab.url)
+  }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading' || changeInfo.url) {
+    void updateActionIcon(tabId, tab.url)
+  }
+})
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  void chrome.tabs
+    .get(tabId)
+    .then((tab) => updateActionIcon(tabId, tab.url))
+    .catch(() => {})
+})
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.state) void updateAllActionIcons()
+})
+void updateAllActionIcons()
 
 async function syncFromDisk() {
   if ((await getAccessState()) === 'granted') {

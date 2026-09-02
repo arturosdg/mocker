@@ -12,26 +12,21 @@
       </span>
       <span class="header__side">
         <span class="header__status" id="connection-status"></span>
-        <label class="header__mocking" for="global-toggle">Mocking</label>
-        <input
-          type="checkbox"
-          class="toggle"
-          id="global-toggle"
-          title="Enciende o apaga mocker por completo"
-        />
+        <span id="origin-group" hidden>
+          <label class="header__mocking" id="origin-label" for="origin-toggle"
+            >Mocking</label
+          >
+          <input
+            type="checkbox"
+            class="toggle"
+            id="origin-toggle"
+            title="Mocking en este dominio"
+          />
+        </span>
       </span>
     </header>
     <div class="toolbar">
       <span class="toolbar__project" id="project-name"></span>
-      <span class="toolbar__environment-group" id="origin-group" hidden>
-        <label class="toolbar__environment-label" id="origin-label" for="origin-toggle"></label>
-        <input
-          type="checkbox"
-          class="toggle toggle--small"
-          id="origin-toggle"
-          title="Mocking en este origen (dominio+puerto)"
-        />
-      </span>
       <span class="toolbar__environment-group" id="environment-group" hidden>
         <label class="toolbar__environment-label" for="environment-select"
           >entorno</label

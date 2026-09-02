@@ -49,10 +49,6 @@ async function patchState(patch: Partial<MockerState>) {
   await chrome.storage.local.set({ state: { ...state, ...patch } })
 }
 
-async function toggleGlobal(enabled: boolean) {
-  await patchState({ enabled })
-}
-
 async function toggleScenario(scenarioId: string, active: boolean) {
   const state = await getState()
   await patchState({
@@ -216,11 +212,6 @@ function renderConnection() {
       : 'header__status header__status--disconnected'
 }
 
-function renderGlobalToggle(state: MockerState) {
-  const toggle = document.getElementById('global-toggle') as HTMLInputElement
-  toggle.checked = state.enabled !== false
-}
-
 function renderOriginToggle(state: MockerState) {
   const group = document.getElementById('origin-group')!
   const isHttpOrigin =
@@ -228,11 +219,11 @@ function renderOriginToggle(state: MockerState) {
   group.hidden = !isHttpOrigin
   if (!isHttpOrigin || !activeOrigin) return
 
-  document.getElementById('origin-label')!.textContent = activeOrigin.replace(
-    /^https?:\/\//,
-    '',
-  )
+  const host = activeOrigin.replace(/^https?:\/\//, '')
+  const label = document.getElementById('origin-label')!
+  label.textContent = host
   const toggle = document.getElementById('origin-toggle') as HTMLInputElement
+  toggle.title = `Mocking en ${host}`
   toggle.checked = !(state.disabledOrigins ?? []).includes(activeOrigin)
 }
 
@@ -274,8 +265,10 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
   const list = document.getElementById('scenario-list')!
   const emptyMessage = document.getElementById('empty-message')!
 
-  list.className =
-    state.enabled === false ? 'scenarios scenarios--off' : 'scenarios'
+  const originDisabled =
+    activeOrigin !== undefined &&
+    (state.disabledOrigins ?? []).includes(activeOrigin)
+  list.className = originDisabled ? 'scenarios scenarios--off' : 'scenarios'
 
   const visibleScenarios = state.scenarios.filter(
     (scenario) => !scenario.archived,
@@ -480,7 +473,6 @@ async function render() {
   ])
   accessState = access
   renderConnection()
-  renderGlobalToggle(state)
   renderOriginToggle(state)
   renderToolbar(state)
   renderScenarios(state, counts)
@@ -490,12 +482,6 @@ async function render() {
 document.getElementById('open-settings')!.addEventListener('click', () => {
   void chrome.runtime.openOptionsPage()
 })
-
-document
-  .getElementById('global-toggle')!
-  .addEventListener('change', (event) => {
-    void toggleGlobal((event.target as HTMLInputElement).checked)
-  })
 
 document.getElementById('origin-toggle')!.addEventListener('change', (event) => {
   void toggleOrigin((event.target as HTMLInputElement).checked)

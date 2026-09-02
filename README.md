@@ -42,8 +42,9 @@ environments:
     api: https://api.sta.example
 ```
 
-La intercepción funciona en cualquier página con el toggle **Mocking**
-encendido — no hay que declarar hosts.
+La intercepción funciona en cualquier página — no hay que declarar hosts. El
+toggle **Mocking** del popup apaga un dominio concreto (dominio+puerto), y el
+icono de la extensión se ve gris en las pestañas con el dominio apagado.
 
 ```yaml
 # scenarios/lista-vacia.yaml
@@ -105,7 +106,8 @@ tráfico real que pasó de largo — la cantera para crear mocks nuevos. Añade
 `.mocks/.runtime/` al `.gitignore` del repo.
 
 La activación es estado del navegador (no toca los ficheros) y tiene tres
-niveles en el popup: un **toggle global** de interceptación en la cabecera,
+niveles en el popup: un toggle **por dominio** en la cabecera (apaga mocking y
+captura en el dominio+puerto de la pestaña actual, con el icono en gris),
 un toggle por **escenario**, y — desplegando el escenario con ▸ — un toggle por
 **mock** individual. Varios escenarios pueden estar activos a la vez y, si dos
 mockean la misma URL, gana el último activado. El contador ámbar de cada
@@ -154,9 +156,8 @@ arrastrando** (las tarjetas de escenario en lectura; los mocks por su asa ⠿ en
 edición; el orden de escenarios se persiste en `project.yaml: order`) y
 eliminar. La tarjeta de proyecto también
 es plegable. Los toggles de activación (escenario y mock) aplican al instante,
-sin pasar por Guardar; el toggle global de Mocking y el interruptor por origen
-(dominio+puerto de la pestaña actual) viven en el popup. Renombrar = editar el
-campo Nombre y guardar;
+sin pasar por Guardar; el toggle de Mocking por dominio vive en el popup.
+Renombrar = editar el campo Nombre y guardar;
 el fichero conserva su id para que la activación no se pierda. La tarjeta de
 proyecto edita `project.yaml`: nombre y los entornos con sus variables
 (sección plegable). Las URLs con `{{variables}}` se validan en vivo: borde

@@ -29,7 +29,6 @@ export interface ScenarioActivation {
 
 export interface MockerState {
   connected: boolean
-  enabled?: boolean
   disabledOrigins?: string[]
   project?: Project
   scenarios: Scenario[]
@@ -81,9 +80,11 @@ export function isMockActive(
   return state.mockActivation?.[scenarioId]?.[mockIndex] !== false
 }
 
-export function resolveActiveMocks(state: MockerState): ResolvedMock[] {
-  if (state.enabled === false) return []
+export function isOriginDisabled(state: MockerState, origin: string): boolean {
+  return state.disabledOrigins?.includes(origin) ?? false
+}
 
+export function resolveActiveMocks(state: MockerState): ResolvedMock[] {
   const environmentName = selectedEnvironment(state)
   const variables = environmentName
     ? (state.project?.environments?.[environmentName] ?? {})
