@@ -127,6 +127,9 @@ envelope (`{"push":{"channel":…,"pub":{"data":…}}}`), so a centrifuge client
 delivers it to that channel's subscription; without one, the data goes as a
 raw frame — useful for any WebSocket app. Injection rides the page's real
 connection: the client must be connected (and subscribed, for channels).
+Frequent pushes can be saved in `.mocks/websockets.yaml` (edited from the
+settings WebSockets tab, shared through git) and fired with one click; the
+popup's network area toggles between the Requests and WebSockets views.
 
 ## Mocked requests show in the Console
 

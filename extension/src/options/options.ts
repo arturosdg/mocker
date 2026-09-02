@@ -1,5 +1,6 @@
 import {
   createScenario as createScenarioFile,
+  updateWsMessages,
   deleteScenario as deleteScenarioFile,
   getAccessState,
   pickProjectDirectory,
@@ -17,6 +18,7 @@ import {
   type MockerState,
   type Project,
   type Scenario,
+  type WsMessage,
 } from '../lib/state'
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']
@@ -271,7 +273,11 @@ function markEdited() {
 }
 
 function snapshotKey(state: MockerState): string {
-  return JSON.stringify({ project: state.project, scenarios: state.scenarios })
+  return JSON.stringify({
+    project: state.project,
+    scenarios: state.scenarios,
+    wsMessages: state.wsMessages ?? [],
+  })
 }
 
 function parseResponse(text: string): unknown {
@@ -1274,6 +1280,7 @@ async function render() {
   list
     .querySelectorAll('textarea')
     .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
+  renderWsMessages(state)
   document.getElementById('stale-banner')!.hidden = true
   hasUnsavedEdits = false
   lastRenderedSnapshot = snapshotKey(state)
@@ -1334,20 +1341,120 @@ document.getElementById('archived-toggle')!.addEventListener('click', () => {
   syncArchivedVisibility()
 })
 
-function selectTab(docs: boolean) {
-  document.getElementById('view-scenarios')!.hidden = docs
-  document.getElementById('view-docs')!.hidden = !docs
-  document
-    .getElementById('tab-scenarios')!
-    .classList.toggle('tab--active', !docs)
-  document.getElementById('tab-docs')!.classList.toggle('tab--active', docs)
+type SettingsTab = 'scenarios' | 'websockets' | 'docs'
+
+function selectTab(tab: SettingsTab) {
+  for (const name of ['scenarios', 'websockets', 'docs'] as const) {
+    document.getElementById(`view-${name}`)!.hidden = name !== tab
+    document
+      .getElementById(`tab-${name}`)!
+      .classList.toggle('tab--active', name === tab)
+  }
 }
 
-document
-  .getElementById('tab-scenarios')!
-  .addEventListener('click', () => selectTab(false))
-document
-  .getElementById('tab-docs')!
-  .addEventListener('click', () => selectTab(true))
+for (const name of ['scenarios', 'websockets', 'docs'] as const) {
+  document
+    .getElementById(`tab-${name}`)!
+    .addEventListener('click', () => selectTab(name))
+}
+
+const wsMessageReaders = new WeakMap<Element, () => WsMessage>()
+
+function buildWsMessageCard(message: WsMessage): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'card'
+
+  const nameInput = buildTextInput(message.name, 'Message name')
+  const urlInput = buildTextInput(
+    message.url ?? '',
+    'socket url contains… (optional)',
+  )
+  const channelInput = buildTextInput(
+    message.channel ?? '',
+    'channel (empty = raw frame)',
+  )
+
+  const dataInput = document.createElement('textarea')
+  dataInput.value = formatResponse(message.data)
+  dataInput.placeholder = '{ "count": 2 } — JSON or plain text'
+  dataInput.addEventListener('input', () => autoGrow(dataInput))
+
+  const removeButton = document.createElement('button')
+  removeButton.className = 'button button--danger button--small'
+  removeButton.textContent = 'Remove'
+  removeButton.addEventListener('click', () => {
+    const parent = card.parentElement
+    card.remove()
+    if (parent) notifyStructuralEdit(parent)
+  })
+
+  const top = document.createElement('div')
+  top.className = 'card__top'
+  top.append(document.createElement('span'), removeButton)
+
+  const firstRow = document.createElement('div')
+  firstRow.className = 'card__header'
+  firstRow.append(
+    buildField('Name', nameInput),
+    buildField('Socket url', urlInput),
+    buildField('Channel', channelInput),
+  )
+
+  card.append(top, firstRow, buildField('Data', dataInput))
+
+  wsMessageReaders.set(card, () => {
+    const url = urlInput.value.trim()
+    const channel = channelInput.value.trim()
+    return {
+      name: nameInput.value.trim(),
+      ...(url ? { url } : {}),
+      ...(channel ? { channel } : {}),
+      data: parseResponse(dataInput.value),
+    }
+  })
+  return card
+}
+
+function renderWsMessages(state: MockerState) {
+  const list = document.getElementById('ws-message-list')!
+  const messages = state.wsMessages ?? []
+  document.getElementById('ws-empty')!.hidden = messages.length > 0
+  list.replaceChildren(...messages.map((message) => buildWsMessageCard(message)))
+  list
+    .querySelectorAll('textarea')
+    .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
+  const saveButton = document.getElementById('ws-save') as HTMLButtonElement
+  saveButton.disabled = true
+}
+
+document.getElementById('ws-add-message')!.addEventListener('click', () => {
+  markEdited()
+  ;(document.getElementById('ws-save') as HTMLButtonElement).disabled = false
+  document
+    .getElementById('ws-message-list')!
+    .append(buildWsMessageCard({ name: '', data: '' }))
+})
+
+document.getElementById('view-websockets')!.addEventListener('input', () => {
+  markEdited()
+  ;(document.getElementById('ws-save') as HTMLButtonElement).disabled = false
+})
+
+document.getElementById('ws-save')!.addEventListener('click', async () => {
+  const errorMessage = document.getElementById('ws-error')!
+  const messages = [
+    ...document.getElementById('ws-message-list')!.children,
+  ].map((card) => wsMessageReaders.get(card)!())
+  const result = await updateWsMessages(messages)
+  if (!result.ok) {
+    errorMessage.textContent = result.error ?? 'Unknown error'
+    errorMessage.hidden = false
+    return
+  }
+  errorMessage.hidden = true
+  hasUnsavedEdits = false
+  await render()
+  showSnackbar('WebSocket messages saved')
+})
 
 void reloadSnapshot().then(() => render())

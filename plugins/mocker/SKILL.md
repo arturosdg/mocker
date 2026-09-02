@@ -94,6 +94,23 @@ string:
 3. Ask the user to use the app (or reload the tab), then verify in the
    runtime log.
 
+## WebSocket pushes
+
+`.mocks/websockets.yaml` holds saved server pushes the user can fire from the
+popup (WebSockets view). You can write them like any other file:
+
+```yaml
+messages:
+  - name: New task push
+    url: centrifugo          # optional socket url filter
+    channel: tasks:123       # optional; empty = raw frame
+    data:
+      count: 2
+```
+
+With a channel, the frame ships in the Centrifugo v2 push envelope; sending
+is always a user click (the page must have a live, subscribed connection).
+
 ## Verification: .mocks/.runtime/requests.json
 
 Last 50 requests from tabs with mocking enabled:

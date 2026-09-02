@@ -819,6 +819,12 @@ body.is-dragging {
   text-align: center;
 }
 
+.ws-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .snackbar {
   position: fixed;
   bottom: 24px;

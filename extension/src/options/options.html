@@ -20,6 +20,7 @@
     </header>
     <nav class="tabs">
       <button class="tab tab--active" id="tab-scenarios">Scenarios</button>
+      <button class="tab" id="tab-websockets">WebSockets</button>
       <button class="tab" id="tab-docs">Docs</button>
     </nav>
     <main class="settings">
@@ -49,6 +50,29 @@
         ></button>
         <div class="scenario-cards" id="archived-list"></div>
       </div>
+      </div>
+      <div id="view-websockets" hidden>
+        <div class="section-header">
+          <h2 class="section-header__title">WebSocket messages</h2>
+          <button class="button button--primary" id="ws-add-message">
+            Add message
+          </button>
+        </div>
+        <p class="banner" id="ws-hint">
+          Saved messages live in <code>.mocks/websockets.yaml</code> and can be
+          fired from the popup's WebSockets view. With a channel, the frame is
+          wrapped in the Centrifugo push envelope; without one it is sent raw.
+        </p>
+        <div class="scenario-cards" id="ws-message-list"></div>
+        <p class="empty" id="ws-empty" hidden>
+          No saved messages. Add the pushes you fire often.
+        </p>
+        <p class="card__error" id="ws-error" hidden></p>
+        <div class="ws-footer">
+          <button class="button button--primary" id="ws-save" disabled>
+            Save
+          </button>
+        </div>
       </div>
       <div class="docs" id="view-docs" hidden>
         <h2>The <code>.mocks/</code> format</h2>
@@ -148,6 +172,19 @@ mocks:
           injected over the page's real connection, so the client must
           already be connected and subscribed.
         </p>
+        <p>
+          Frequent pushes can be <strong>saved</strong> in
+          <code>.mocks/websockets.yaml</code> (WebSockets tab, or by editing
+          the file — it is shared through git like everything else) and fired
+          with one click from the popup:
+        </p>
+        <pre>
+messages:
+  - name: New task push
+    url: centrifugo          # optional: socket url filter
+    channel: tasks:123       # optional: empty = raw frame
+    data:
+      count: 2</pre>
 
         <h3>For agents: .runtime/requests.json</h3>
         <p>
