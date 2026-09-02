@@ -9,6 +9,17 @@ carpeta directamente vía File System Access — sin procesos externos.
 .mocks/ (en el repo de tu app)  ←fs→  extensión (Chrome MV3)
 ```
 
+## Tests
+
+`npm run e2e` compila la extensión y corre la batería end-to-end (50 checks)
+sobre un Chromium real: importación y estados de conexión, matching
+(pathname, query, fragmento, comodín, variables), interceptor fetch/XHR con
+delay y precedencia, toggles por escenario/mock/dominio, capturas y
+añadir-como-mock, log de runtime, edición/CRUD/validación/archivado, reorder
+por drag, docs y panel. Usa `MOCKER_CHROME` para apuntar a un binario
+concreto; por defecto usa el Chromium de la caché de Playwright o el Chrome
+del sistema.
+
 ## Capturas
 
 El popup: toggles por escenario y por mock, interruptor por origen, y el
