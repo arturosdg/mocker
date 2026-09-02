@@ -64,6 +64,15 @@ export interface CapturedRequest {
   tabId?: number
 }
 
+export interface CapturedWsFrame {
+  url: string
+  direction: 'in' | 'out'
+  data: string
+  origin: string
+  at: number
+  tabId?: number
+}
+
 export const EMPTY_STATE: MockerState = {
   connected: false,
   scenarios: [],

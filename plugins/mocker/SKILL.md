@@ -159,6 +159,32 @@ Last 50 requests from tabs with mocking enabled:
   mock.
 - The file only updates while the user browses with the extension connected;
   a stale `updatedAt` means no new traffic, not a failure.
+- Both logs are purged at the start of each browser session — everything in
+  them belongs to the current session.
+
+## Verification: .mocks/.runtime/websockets.json
+
+Last 50 WebSocket frames from tabs with mocking enabled, both directions:
+
+```json
+{
+  "updatedAt": "2026-09-02T12:00:00.000Z",
+  "frames": [
+    {
+      "at": 1788350000000,
+      "origin": "https://localhost:3000",
+      "url": "wss://push.example.com/connection/websocket",
+      "direction": "in",
+      "data": "{\"push\":{\"channel\":\"tasks:123\",\"pub\":{\"data\":{\"count\":2}}}}"
+    }
+  ]
+}
+```
+
+- `direction: "in"` = received from the server (raw material for saved
+  messages in `websockets.yaml`); `"out"` = sent by the page (subscribe
+  commands here reveal the channel names the app listens to).
+- Frames injected by mocker itself are not captured.
 
 ## Common mistakes
 

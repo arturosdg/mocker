@@ -116,20 +116,27 @@ entry carries the call made (method, url, `requestBody`), the response
 received (`status`, `body`, both capped at 32KB) and, when mocker intercepted
 it, `mocked: true` plus the `scenario`, `mockName` and `mockUrl` that
 matched. Entries without `mocked` are real traffic that passed through — raw
-material for new mocks. Add `.mocks/.runtime/` to the repo's `.gitignore`.
+material for new mocks. WebSocket frames get the same treatment in
+`.mocks/.runtime/websockets.json` (`{ updatedAt, frames: [...] }`), captured
+in both directions (`direction: "in" | "out"`) — outgoing subscribe commands
+reveal the channels the app listens to, incoming pushes are raw material for
+saved messages. Both logs are purged at the start of each browser session.
+Add `.mocks/.runtime/` to the repo's `.gitignore`.
 
 ## WebSocket pushes (Centrifugo-friendly)
 
-The popup's **WebSockets · this tab** section lists the page's live sockets
-and injects messages as if the server had pushed them: socket url filter +
-channel + data + Send. With a channel, the frame ships in the Centrifugo v2
+The popup toggles between **Mocks** and **WebSockets** mode. In WebSockets
+mode the main list shows the messages saved in `.mocks/websockets.yaml`
+(edited from the settings WebSockets tab, shared through git): channel on
+top, body below, and a launch button that injects the message as if the
+server had pushed it. With a channel, the frame ships in the Centrifugo v2
 envelope (`{"push":{"channel":…,"pub":{"data":…}}}`), so a centrifuge client
 delivers it to that channel's subscription; without one, the data goes as a
 raw frame — useful for any WebSocket app. Injection rides the page's real
 connection: the client must be connected (and subscribed, for channels).
-Frequent pushes can be saved in `.mocks/websockets.yaml` (edited from the
-settings WebSockets tab, shared through git) and fired with one click; the
-popup's network area toggles between the Requests and WebSockets views.
+The network section below lists the tab's active websockets and its captured
+frames — each frame has a + button that saves it as a configured message
+(un-wrapping the Centrifugo envelope back into channel + data).
 
 ## Mocked requests show in the Console
 

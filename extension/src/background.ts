@@ -1,7 +1,9 @@
 import {
+  clearRuntimeLogs,
   getAccessState,
   reloadSnapshot,
   writeRuntimeRequestsLog,
+  writeRuntimeWsFramesLog,
 } from './lib/filesystem'
 import { isOriginDisabled, type MockerState } from './lib/state'
 
@@ -55,9 +57,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 void updateAllActionIcons()
 
 async function syncFromDisk() {
-  if ((await getAccessState()) === 'granted') {
-    await reloadSnapshot()
+  if ((await getAccessState()) !== 'granted') return
+  const { runtimeLogsCleared } =
+    await chrome.storage.session.get('runtimeLogsCleared')
+  if (!runtimeLogsCleared) {
+    await clearRuntimeLogs()
+    await chrome.storage.session.set({ runtimeLogsCleared: true })
   }
+  await reloadSnapshot()
 }
 
 chrome.alarms.create('mocker-sync', { periodInMinutes: 0.5 })
@@ -87,6 +94,23 @@ function appendCapturedRequest(
   })
 }
 
+let capturedWsFramesQueue: Promise<void> = Promise.resolve()
+
+function appendCapturedWsFrame(
+  frame: object,
+  origin: string,
+  tabId: number | undefined,
+) {
+  capturedWsFramesQueue = capturedWsFramesQueue.then(async () => {
+    const { wsFrames } = await chrome.storage.session.get('wsFrames')
+    const list = (wsFrames as object[] | undefined) ?? []
+    list.unshift({ ...frame, origin, at: Date.now(), tabId })
+    const capped = list.slice(0, MAX_CAPTURED_REQUESTS)
+    await chrome.storage.session.set({ wsFrames: capped })
+    await writeRuntimeWsFramesLog(capped)
+  })
+}
+
 async function incrementMatchedCount(scenarioId: string) {
   const { counts } = await chrome.storage.session.get('counts')
   const current = (counts as Record<string, number> | undefined) ?? {}
@@ -109,6 +133,14 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === 'mocker:request') {
     appendCapturedRequest(
       message.request as object,
+      sender.origin ?? sender.url ?? '',
+      sender.tab?.id,
+    )
+  }
+
+  if (message?.type === 'mocker:ws-frame') {
+    appendCapturedWsFrame(
+      message.frame as object,
       sender.origin ?? sender.url ?? '',
       sender.tab?.id,
     )

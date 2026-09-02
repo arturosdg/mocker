@@ -42,6 +42,9 @@ window.addEventListener('message', (event) => {
   if (data.type === 'request') {
     safeSendMessage({ type: 'mocker:request', request: data.request })
   }
+  if (data.type === 'ws-frame') {
+    safeSendMessage({ type: 'mocker:ws-frame', frame: data.frame })
+  }
 })
 
 const pendingPageRequests = new Map<string, (result: unknown) => void>()

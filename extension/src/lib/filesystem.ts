@@ -354,7 +354,7 @@ export function deleteScenario(id: string): Promise<WriteResult> {
   })
 }
 
-export async function writeRuntimeRequestsLog(requests: unknown[]) {
+async function writeRuntimeFile(fileName: string, payload: object) {
   try {
     const handle = await loadDirectoryHandle().catch(() => undefined)
     if (!handle) return
@@ -366,9 +366,9 @@ export async function writeRuntimeRequestsLog(requests: unknown[]) {
     })
     await writeFile(
       runtimeDirectory,
-      'requests.json',
+      fileName,
       JSON.stringify(
-        { updatedAt: new Date().toISOString(), requests },
+        { updatedAt: new Date().toISOString(), ...payload },
         null,
         2,
       ),
@@ -376,6 +376,19 @@ export async function writeRuntimeRequestsLog(requests: unknown[]) {
   } catch {
     // best effort: the runtime log must never break capturing
   }
+}
+
+export function writeRuntimeRequestsLog(requests: unknown[]) {
+  return writeRuntimeFile('requests.json', { requests })
+}
+
+export function writeRuntimeWsFramesLog(frames: unknown[]) {
+  return writeRuntimeFile('websockets.json', { frames })
+}
+
+export async function clearRuntimeLogs() {
+  await writeRuntimeFile('requests.json', { requests: [] })
+  await writeRuntimeFile('websockets.json', { frames: [] })
 }
 
 export function updateProject(project: Project): Promise<WriteResult> {

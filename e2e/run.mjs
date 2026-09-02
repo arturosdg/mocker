@@ -45,6 +45,7 @@ const server = createServer((request, response) => {
     response.end(`<html><body>e2e<script>
       window.__wsMessages = []
       const socket = new WebSocket('ws://localhost:${PORT}/connection/websocket')
+      socket.onopen = () => socket.send('{"connect":"e2e"}')
       socket.onmessage = (event) => window.__wsMessages.push(event.data)
     </script></body></html>`)
     return
@@ -62,6 +63,8 @@ server.on('upgrade', (request, socket) => {
     'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
       `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
   )
+  const greeting = Buffer.from('{"welcome":true}')
+  socket.write(Buffer.concat([Buffer.from([0x81, greeting.length]), greeting]))
 })
 await new Promise((resolve) => server.listen(PORT, resolve))
 
@@ -565,17 +568,17 @@ check(
 )
 await settings.locator('[data-scenario-id="permock"]').getByRole('button', { name: 'Cancel' }).click()
 
-// ───────────────────────── I. WebSockets: listar, emitir y mensajes guardados
+// ───────────────────────── I. WebSockets: modo, emitir, capturas de frames
 await app.bringToFront()
 await popup.reload()
 await popup.waitForTimeout(700)
-if (!(await popup.locator('#network-body').isVisible())) {
-  await popup.locator('#network-toggle').click()
-  await popup.waitForTimeout(200)
-}
 await popup.locator('#segment-websockets').click()
 await popup.waitForTimeout(400)
-check('vista websockets separada de requests', await popup.locator('#ws-view').isVisible() && !(await popup.locator('#requests-view').isVisible()))
+check(
+  'modo websockets: mensajes guardados como lista principal',
+  (await popup.locator('#ws-main').isVisible()) &&
+    !(await popup.locator('#mocks-main').isVisible()),
+)
 const savedRow = popup.locator('.ws-saved-row').first()
 const savedRowText = await savedRow.textContent()
 check(
@@ -597,11 +600,6 @@ check(
   savedFrame?.push?.channel === 'tasks:e2e' && savedFrame?.push?.pub?.data?.n === 1,
   JSON.stringify(savedFrame),
 )
-const socketRow = popup.locator('.ws-socket').first()
-check(
-  'socket listado con su url',
-  (await socketRow.textContent()).includes('/connection/websocket'),
-)
 check(
   'resultado de envío visible',
   (await popup.locator('#ws-result').textContent()).includes('sent to 1'),
@@ -617,16 +615,62 @@ check(
   'frame crudo entregado sin sobre',
   await app.evaluate(() => window.__wsMessages.at(-1) === 'plain-frame'),
 )
-check('sin formulario manual en el popup', (await popup.locator('#ws-send').count()) === 0)
-await popup.locator('#segment-requests').click()
+if (!(await popup.locator('#network-body').isVisible())) {
+  await popup.locator('#network-toggle').click()
+  await popup.waitForTimeout(200)
+}
+check(
+  'network en modo ws: título Active websockets',
+  (await popup.locator('.network__subtitle').first().textContent()) ===
+    'Active websockets',
+)
+const socketRow = popup.locator('.ws-socket').first()
+check(
+  'socket listado con su url',
+  (await socketRow.textContent()).includes('/connection/websocket'),
+)
+const inFrameRow = popup.locator('.ws-frame-row', { hasText: 'welcome' }).first()
+check(
+  'frame entrante capturado con dirección',
+  (await inFrameRow.locator('.ws-frame-row__direction').textContent()) === '↓',
+)
+const outFrameRow = popup.locator('.ws-frame-row', { hasText: 'connect' }).first()
+check(
+  'frame saliente capturado con dirección',
+  (await outFrameRow.locator('.ws-frame-row__direction').textContent()) === '↑',
+)
+check(
+  'frames inyectados no se capturan',
+  (await popup.locator('.ws-frame-row', { hasText: 'tasks:e2e' }).count()) === 0,
+)
+await inFrameRow.locator('.capture-row__add').click()
+await popup.waitForTimeout(900)
+check(
+  'frame capturado guardado en websockets.yaml',
+  (await readOpfs(['websockets.yaml'])).includes('welcome'),
+)
+check(
+  'botón de frame pasa a flecha',
+  (await inFrameRow.locator('.capture-row__add').textContent()) === '→',
+)
+const wsRuntimeLog = JSON.parse(await readOpfs(['.runtime', 'websockets.json']))
+check(
+  'websockets.json con frames en ambas direcciones',
+  typeof wsRuntimeLog.updatedAt === 'string' &&
+    wsRuntimeLog.frames.some((frame) => frame.direction === 'in') &&
+    wsRuntimeLog.frames.some((frame) => frame.direction === 'out'),
+)
+await popup.locator('#segment-mocks').click()
 await popup.waitForTimeout(300)
-check('vuelta al segmento de requests', await popup.locator('#requests-view').isVisible())
+check('vuelta al modo mocks', await popup.locator('#mocks-main').isVisible())
 
 // ───────────────────────── I2. Settings: editor de mensajes WS
 await settings.bringToFront()
+await settings.reload()
+await settings.waitForTimeout(500)
 await settings.locator('#tab-websockets').click()
 await settings.waitForTimeout(300)
-check('tab websockets con los mensajes', (await settings.locator('#ws-message-list .card').count()) === 2)
+check('tab websockets con los mensajes', (await settings.locator('#ws-message-list .card').count()) === 3)
 check('guardar ws deshabilitado sin cambios', await settings.locator('#ws-save').isDisabled())
 await settings.locator('#ws-message-list .card__header input').first().fill('Renamed push')
 check('guardar ws habilitado al editar', !(await settings.locator('#ws-save').isDisabled()))
@@ -656,6 +700,19 @@ check(
   'vista de panel (?tab=) con capturas de esa pestaña',
   (await panel.evaluate(() => document.body.classList.contains('panel'))) &&
     (await panel.locator('#network-section').count()) === 1,
+)
+
+// ───────────────────────── K. Purga de logs de runtime por sesión
+await serviceWorker.evaluate(async () => {
+  await chrome.storage.session.remove('runtimeLogsCleared')
+})
+await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'mocker:sync' }))
+await popup.waitForTimeout(800)
+const purgedRequests = JSON.parse(await readOpfs(['.runtime', 'requests.json']))
+const purgedFrames = JSON.parse(await readOpfs(['.runtime', 'websockets.json']))
+check(
+  'logs de runtime purgados al empezar sesión',
+  purgedRequests.requests.length === 0 && purgedFrames.frames.length === 0,
 )
 
 // ───────────────────────── resumen

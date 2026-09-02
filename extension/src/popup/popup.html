@@ -38,20 +38,27 @@
         ></select>
       </span>
     </div>
-    <ul class="scenarios" id="scenario-list"></ul>
-    <p class="empty" id="empty-message" hidden></p>
+    <div class="segmented segmented--main">
+      <button class="segment segment--active" id="segment-mocks">Mocks</button>
+      <button class="segment" id="segment-websockets">WebSockets</button>
+    </div>
+    <div id="mocks-main">
+      <ul class="scenarios" id="scenario-list"></ul>
+      <p class="empty" id="empty-message" hidden></p>
+    </div>
+    <div id="ws-main" hidden>
+      <ul class="ws-saved" id="ws-saved-list"></ul>
+      <p class="ws-empty" id="ws-empty" hidden>
+        No saved messages — add them in settings › WebSockets.
+      </p>
+      <p class="ws-result" id="ws-result"></p>
+    </div>
     <section class="network" id="network-section" hidden>
       <button class="network__header" id="network-toggle">
         <span class="network__title" id="network-title"></span>
         <span class="network__count" id="network-count"></span>
       </button>
       <div class="network__body" id="network-body" hidden>
-        <div class="segmented">
-          <button class="segment segment--active" id="segment-requests">
-            Requests
-          </button>
-          <button class="segment" id="segment-websockets">WebSockets</button>
-        </div>
         <div id="requests-view">
           <div class="network__destination-row">
             <label class="network__destination-label" for="network-destination"
@@ -63,16 +70,14 @@
             ></select>
           </div>
           <ul class="network__list" id="network-list"></ul>
-          <p class="network__error" id="network-error" hidden></p>
         </div>
-        <div id="ws-view" hidden>
-          <ul class="network__list ws-saved" id="ws-saved-list"></ul>
-          <p class="ws-empty" id="ws-empty" hidden>
-            No saved messages — add them in settings › WebSockets.
-          </p>
+        <div id="ws-network-view" hidden>
+          <p class="network__subtitle">Active websockets</p>
           <ul class="network__list ws-sockets" id="ws-socket-list"></ul>
-          <p class="ws-result" id="ws-result"></p>
+          <p class="network__subtitle">Captured messages</p>
+          <ul class="network__list ws-frames" id="ws-frame-list"></ul>
         </div>
+        <p class="network__error" id="network-error" hidden></p>
       </div>
     </section>
     <footer class="footer">

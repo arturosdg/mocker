@@ -186,12 +186,15 @@ messages:
     data:
       count: 2</pre>
 
-        <h3>For agents: .runtime/requests.json</h3>
+        <h3>For agents: .runtime/ logs</h3>
         <p>
           With the project connected, mocker dumps the last 50 captured
-          requests to <code>.mocks/.runtime/requests.json</code>. An agent
-          can edit the YAML files directly and read that file to verify what
-          was called and what matched — without opening a browser. Add
+          requests to <code>.mocks/.runtime/requests.json</code> and the last
+          50 WebSocket frames (both directions) to
+          <code>.mocks/.runtime/websockets.json</code>. An agent can edit the
+          YAML files directly and read those files to verify what was called
+          and what matched — without opening a browser. Both logs are purged
+          at the start of each browser session. Add
           <code>.mocks/.runtime/</code> to your <code>.gitignore</code>.
         </p>
         <pre>
