@@ -1358,6 +1358,8 @@ for (const name of ['scenarios', 'websockets', 'docs'] as const) {
     .addEventListener('click', () => selectTab(name))
 }
 
+if (location.hash === '#websockets') selectTab('websockets')
+
 const wsMessageReaders = new WeakMap<Element, () => WsMessage>()
 
 function buildWsMessageCard(message: WsMessage): HTMLElement {

@@ -3,6 +3,7 @@ import {
   reloadSnapshot,
   requestAccess,
   updateScenario,
+  updateWsMessages,
   type AccessState,
   type WriteResult,
 } from '../lib/filesystem'
@@ -11,15 +12,18 @@ import {
   isMockActive,
   selectedEnvironment,
   type CapturedRequest,
+  type CapturedWsFrame,
   type Mock,
   type MockerState,
   type Scenario,
+  type WsMessage,
 } from '../lib/state'
 
 const MAX_VISIBLE_CAPTURES = 20
 
 const expandedScenarios = new Set<string>()
 const addedRequests = new Map<string, { scenarioId: string; mockUrl: string }>()
+const addedFrames = new Set<string>()
 let activeTabId: number | undefined
 let activeOrigin: string | undefined
 let networkOpen = false
@@ -43,6 +47,15 @@ async function getCounts(): Promise<Record<string, number>> {
 async function getCapturedRequests(): Promise<CapturedRequest[]> {
   const { requests } = await chrome.storage.session.get('requests')
   return (requests as CapturedRequest[] | undefined) ?? []
+}
+
+async function getCapturedWsFrames(): Promise<CapturedWsFrame[]> {
+  const { wsFrames } = await chrome.storage.session.get('wsFrames')
+  return (wsFrames as CapturedWsFrame[] | undefined) ?? []
+}
+
+function frameKey(frame: CapturedWsFrame): string {
+  return `${frame.at}|${frame.direction}|${frame.data}`
 }
 
 async function patchState(patch: Partial<MockerState>) {
@@ -431,10 +444,22 @@ function buildCaptureRow(
   return row
 }
 
+function renderMode() {
+  document
+    .getElementById('segment-mocks')!
+    .classList.toggle('segment--active', popupMode === 'mocks')
+  document
+    .getElementById('segment-websockets')!
+    .classList.toggle('segment--active', popupMode === 'websockets')
+  document.getElementById('mocks-main')!.hidden = popupMode !== 'mocks'
+  document.getElementById('ws-main')!.hidden = popupMode !== 'websockets'
+}
+
 function renderNetwork(
   state: MockerState,
   requests: CapturedRequest[],
   sockets: TrackedSocketInfo[],
+  frames: CapturedWsFrame[],
 ) {
   const section = document.getElementById('network-section')!
   const tabRequests = requests
@@ -443,33 +468,31 @@ function renderNetwork(
         request.tabId !== undefined && request.tabId === activeTabId,
     )
     .slice(0, MAX_VISIBLE_CAPTURES)
+  const tabFrames = frames
+    .filter((frame) => frame.tabId !== undefined && frame.tabId === activeTabId)
+    .slice(0, MAX_VISIBLE_CAPTURES)
 
-  const savedMessages = state.wsMessages ?? []
   const hasContent =
-    tabRequests.length > 0 || sockets.length > 0 || savedMessages.length > 0
+    popupMode === 'mocks'
+      ? tabRequests.length > 0
+      : sockets.length > 0 || tabFrames.length > 0
   section.hidden = !hasContent
   if (!hasContent) return
 
   document.getElementById('network-title')!.textContent =
     `${networkOpen ? '▾' : '▸'} Network · this tab`
   document.getElementById('network-count')!.textContent = String(
-    networkMode === 'requests' ? tabRequests.length : sockets.length,
+    popupMode === 'mocks' ? tabRequests.length : tabFrames.length,
   )
   document.getElementById('network-body')!.hidden = !networkOpen
   document.getElementById('network-error')!.hidden = true
   if (!networkOpen) return
 
-  document
-    .getElementById('segment-requests')!
-    .classList.toggle('segment--active', networkMode === 'requests')
-  document
-    .getElementById('segment-websockets')!
-    .classList.toggle('segment--active', networkMode === 'websockets')
-  document.getElementById('requests-view')!.hidden =
-    networkMode !== 'requests'
-  document.getElementById('ws-view')!.hidden = networkMode !== 'websockets'
-  if (networkMode === 'websockets') {
-    renderWsView(state, sockets)
+  document.getElementById('requests-view')!.hidden = popupMode !== 'mocks'
+  document.getElementById('ws-network-view')!.hidden =
+    popupMode !== 'websockets'
+  if (popupMode === 'websockets') {
+    renderWsNetwork(state, sockets, tabFrames)
     return
   }
 
@@ -505,7 +528,7 @@ interface TrackedSocketInfo {
   open: boolean
 }
 
-let networkMode: 'requests' | 'websockets' = 'requests'
+let popupMode: 'mocks' | 'websockets' = 'mocks'
 
 async function listTabSockets(): Promise<TrackedSocketInfo[]> {
   if (activeTabId === undefined) return []
@@ -543,7 +566,7 @@ async function emitWs(
   }
 }
 
-function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
+function renderWsSaved(state: MockerState) {
   const result = document.getElementById('ws-result')!
   const savedMessages = state.wsMessages ?? []
   document.getElementById('ws-empty')!.hidden = savedMessages.length > 0
@@ -588,7 +611,92 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
       return row
     }),
   )
+}
 
+function savedMessageFromFrame(frame: CapturedWsFrame): WsMessage {
+  const time = new Date(frame.at).toLocaleTimeString('en-GB', {
+    hour12: false,
+  })
+  try {
+    const parsed = JSON.parse(frame.data) as {
+      push?: { channel?: string; pub?: { data?: unknown } }
+    }
+    if (parsed?.push?.channel) {
+      return {
+        name: `${parsed.push.channel} · ${time}`,
+        channel: parsed.push.channel,
+        data: parsed.push.pub?.data ?? parsed.push,
+      }
+    }
+    return { name: `Captured frame · ${time}`, data: parsed }
+  } catch {
+    return { name: `Captured frame · ${time}`, data: frame.data }
+  }
+}
+
+function buildFrameRow(
+  state: MockerState,
+  frame: CapturedWsFrame,
+): HTMLElement {
+  const row = document.createElement('li')
+  row.className = 'ws-frame-row'
+
+  const direction = document.createElement('span')
+  direction.className =
+    frame.direction === 'in'
+      ? 'ws-frame-row__direction ws-frame-row__direction--in'
+      : 'ws-frame-row__direction'
+  direction.textContent = frame.direction === 'in' ? '↓' : '↑'
+  direction.title =
+    frame.direction === 'in' ? 'Received from the server' : 'Sent by the page'
+
+  const data = document.createElement('span')
+  data.className = 'ws-frame-row__data'
+  data.textContent = frame.data
+  data.title = frame.data
+
+  row.append(direction, data)
+
+  const addButton = document.createElement('button')
+  addButton.className = 'capture-row__add'
+  addButton.textContent = '+'
+  addButton.title = 'Save as a configured message'
+
+  const markAsAdded = () => {
+    addButton.textContent = '→'
+    addButton.classList.add('capture-row__add--added')
+    addButton.title = 'Saved — click to configure it'
+  }
+  if (addedFrames.has(frameKey(frame))) markAsAdded()
+
+  addButton.addEventListener('click', async () => {
+    if (addedFrames.has(frameKey(frame))) {
+      void chrome.tabs.create({
+        url: `${chrome.runtime.getURL('options.html')}#websockets`,
+      })
+      return
+    }
+    const result = await updateWsMessages([
+      ...(state.wsMessages ?? []),
+      savedMessageFromFrame(frame),
+    ])
+    if (!result.ok) {
+      showNetworkError(result.error ?? 'Unknown error')
+      return
+    }
+    addedFrames.add(frameKey(frame))
+    markAsAdded()
+  })
+  row.append(addButton)
+
+  return row
+}
+
+function renderWsNetwork(
+  state: MockerState,
+  sockets: TrackedSocketInfo[],
+  tabFrames: CapturedWsFrame[],
+) {
   document.getElementById('ws-socket-list')!.replaceChildren(
     ...sockets.map((socket) => {
       const row = document.createElement('li')
@@ -608,21 +716,33 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
       return row
     }),
   )
+
+  document
+    .getElementById('ws-frame-list')!
+    .replaceChildren(
+      ...tabFrames.map((frame) => buildFrameRow(state, frame)),
+    )
 }
 
 async function render() {
-  const [state, counts, requests, access] = await Promise.all([
+  const [state, counts, requests, frames, access] = await Promise.all([
     getState(),
     getCounts(),
     getCapturedRequests(),
+    getCapturedWsFrames(),
     getAccessState(),
   ])
   accessState = access
   renderConnection()
   renderOriginToggle(state)
   renderToolbar(state)
-  renderScenarios(state, counts)
-  renderNetwork(state, requests, await listTabSockets())
+  renderMode()
+  if (popupMode === 'mocks') {
+    renderScenarios(state, counts)
+  } else {
+    renderWsSaved(state)
+  }
+  renderNetwork(state, requests, await listTabSockets(), frames)
 }
 
 document.getElementById('open-settings')!.addEventListener('click', () => {
@@ -651,17 +771,17 @@ document.getElementById('network-toggle')!.addEventListener('click', () => {
   void render()
 })
 
-document.getElementById('segment-requests')!.addEventListener('click', () => {
-  networkMode = 'requests'
-  void chrome.storage.local.set({ popupNetworkMode: networkMode })
+document.getElementById('segment-mocks')!.addEventListener('click', () => {
+  popupMode = 'mocks'
+  void chrome.storage.local.set({ popupMode })
   void render()
 })
 
 document
   .getElementById('segment-websockets')!
   .addEventListener('click', () => {
-    networkMode = 'websockets'
-    void chrome.storage.local.set({ popupNetworkMode: networkMode })
+    popupMode = 'websockets'
+    void chrome.storage.local.set({ popupMode })
     void render()
   })
 
@@ -703,11 +823,11 @@ async function resolveActiveOrigin(): Promise<string | undefined> {
 
 void Promise.all([
   resolveActiveTabId(),
-  chrome.storage.local.get(['popupNetworkOpen', 'popupNetworkMode']),
-]).then(async ([resolvedTabId, { popupNetworkOpen, popupNetworkMode }]) => {
+  chrome.storage.local.get(['popupNetworkOpen', 'popupMode']),
+]).then(async ([resolvedTabId, storedPreferences]) => {
   activeTabId = resolvedTabId
-  networkOpen = popupNetworkOpen === true
-  if (popupNetworkMode === 'websockets') networkMode = 'websockets'
+  networkOpen = storedPreferences.popupNetworkOpen === true
+  if (storedPreferences.popupMode === 'websockets') popupMode = 'websockets'
   activeOrigin = await resolveActiveOrigin()
   void render()
 })

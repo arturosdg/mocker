@@ -281,6 +281,25 @@ interface TrackedSocket {
 }
 
 const trackedSockets: TrackedSocket[] = []
+let injectingFrame = false
+
+function frameText(data: unknown): string {
+  return typeof data === 'string'
+    ? data.slice(0, MAX_CAPTURED_BODY_LENGTH)
+    : '[binary frame]'
+}
+
+function reportWsFrame(direction: 'in' | 'out', url: string, data: unknown) {
+  if (!capturing) return
+  window.postMessage(
+    {
+      source: 'mocker-page',
+      type: 'ws-frame',
+      frame: { url, direction, data: frameText(data) },
+    },
+    '*',
+  )
+}
 
 const OriginalWebSocket = window.WebSocket
 window.WebSocket = class extends OriginalWebSocket {
@@ -288,10 +307,19 @@ window.WebSocket = class extends OriginalWebSocket {
     super(url, protocols)
     const tracked = { socket: this, url: String(url) }
     trackedSockets.push(tracked)
+    this.addEventListener('message', (event) => {
+      if (injectingFrame) return
+      reportWsFrame('in', tracked.url, event.data)
+    })
     this.addEventListener('close', () => {
       const index = trackedSockets.indexOf(tracked)
       if (index !== -1) trackedSockets.splice(index, 1)
     })
+  }
+
+  send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+    reportWsFrame('out', this.url, data)
+    super.send(data)
   }
 }
 
@@ -310,8 +338,15 @@ function emitToSockets(
       tracked.socket.readyState === OriginalWebSocket.OPEN &&
       (!urlFragment || tracked.url.includes(urlFragment)),
   )
-  for (const tracked of targets) {
-    tracked.socket.dispatchEvent(new MessageEvent('message', { data: frame }))
+  injectingFrame = true
+  try {
+    for (const tracked of targets) {
+      tracked.socket.dispatchEvent(
+        new MessageEvent('message', { data: frame }),
+      )
+    }
+  } finally {
+    injectingFrame = false
   }
   return { sent: targets.length }
 }
