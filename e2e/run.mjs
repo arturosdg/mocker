@@ -577,7 +577,16 @@ await popup.locator('#segment-websockets').click()
 await popup.waitForTimeout(400)
 check('vista websockets separada de requests', await popup.locator('#ws-view').isVisible() && !(await popup.locator('#requests-view').isVisible()))
 const savedRow = popup.locator('.ws-saved-row').first()
-check('mensaje guardado listado', (await savedRow.textContent()).includes('New task push'))
+const savedRowText = await savedRow.textContent()
+check(
+  'mensaje guardado lista canal y body',
+  savedRowText.includes('tasks:e2e') && savedRowText.includes('"n"'),
+  savedRowText,
+)
+check(
+  'mensaje guardado conserva el nombre como tooltip',
+  (await savedRow.getAttribute('title')) === 'New task push',
+)
 await savedRow.locator('.ws-saved-row__send').click()
 await popup.waitForTimeout(400)
 const savedFrame = await app.evaluate(() =>

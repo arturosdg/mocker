@@ -520,23 +520,32 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  padding: 5px 0;
 }
 
-.ws-saved-row__name {
+.ws-saved-row + .ws-saved-row {
+  border-top: 1px solid var(--border);
+}
+
+.ws-saved-row__info {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .ws-saved-row__channel {
-  flex-shrink: 1;
-  min-width: 0;
-  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ws-saved-row__body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -547,8 +556,8 @@ body {
 
 .ws-saved-row__send {
   flex-shrink: 0;
-  width: 24px;
-  height: 18px;
+  width: 26px;
+  height: 22px;
   font-size: 11px;
   line-height: 1;
   color: var(--text);
