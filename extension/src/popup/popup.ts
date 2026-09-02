@@ -8,6 +8,7 @@ import {
 import {
   EMPTY_STATE,
   isMockActive,
+  selectedEnvironment,
   type CapturedRequest,
   type Mock,
   type MockerState,
@@ -222,6 +223,23 @@ function renderGlobalToggle(state: MockerState) {
 function renderToolbar(state: MockerState) {
   document.getElementById('project-name')!.textContent =
     state.project?.name ?? '—'
+
+  const select = document.getElementById(
+    'environment-select',
+  ) as HTMLSelectElement
+  const environments = Object.keys(state.project?.environments ?? {})
+  document.getElementById('environment-group')!.hidden =
+    environments.length === 0
+  select.replaceChildren(
+    ...environments.map((environmentName) => {
+      const option = document.createElement('option')
+      option.value = environmentName
+      option.textContent = environmentName
+      return option
+    }),
+  )
+  const current = selectedEnvironment(state)
+  if (current) select.value = current
 }
 
 function renderScenarios(state: MockerState, counts: Record<string, number>) {
@@ -444,6 +462,14 @@ document
   .getElementById('global-toggle')!
   .addEventListener('change', (event) => {
     void toggleGlobal((event.target as HTMLInputElement).checked)
+  })
+
+document
+  .getElementById('environment-select')!
+  .addEventListener('change', (event) => {
+    void patchState({
+      environment: (event.target as HTMLSelectElement).value,
+    })
   })
 
 document.getElementById('network-toggle')!.addEventListener('click', () => {

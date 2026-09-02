@@ -23,6 +23,16 @@
     </header>
     <div class="toolbar">
       <span class="toolbar__project" id="project-name"></span>
+      <span class="toolbar__environment-group" id="environment-group" hidden>
+        <label class="toolbar__environment-label" for="environment-select"
+          >entorno</label
+        >
+        <select
+          id="environment-select"
+          class="toolbar__environment"
+          title="Entorno activo: resuelve las {{variables}} de las URLs de los mocks"
+        ></select>
+      </span>
     </div>
     <ul class="scenarios" id="scenario-list"></ul>
     <p class="empty" id="empty-message" hidden></p>

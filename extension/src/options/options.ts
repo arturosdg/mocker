@@ -1094,6 +1094,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const state = changes.state.newValue as MockerState | undefined
   if (!state) return
   renderGlobalToggle(state)
+  const activeEnvironmentSelect = document.querySelector<HTMLSelectElement>(
+    '.card__envs-row select',
+  )
+  const currentEnvironment = selectedEnvironment(state)
+  if (activeEnvironmentSelect && currentEnvironment) {
+    activeEnvironmentSelect.value = currentEnvironment
+  }
   if (snapshotKey(state) === lastRenderedSnapshot) return
   if (hasUnsavedEdits) {
     document.getElementById('stale-banner')!.hidden = false
