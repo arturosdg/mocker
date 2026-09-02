@@ -67,9 +67,12 @@ let environmentsExpanded = false
 let archivedExpanded = false
 const mockReaders = new WeakMap<Element, () => Mock>()
 
+const REORDER_COOLDOWN_MILLISECONDS = 140
+
 function makeDraggableByHandle(
   handle: HTMLElement,
   item: HTMLElement,
+  buildDragSummary: () => HTMLElement,
   onDrop: () => void,
 ) {
   handle.addEventListener('pointerdown', (event) => {
@@ -77,10 +80,34 @@ function makeDraggableByHandle(
     const parent = item.parentElement
     if (!parent) return
     const startIndex = [...parent.children].indexOf(item)
+
+    const summary = buildDragSummary()
+    summary.classList.add('drag-summary')
+    item.append(summary)
     item.classList.add('dragging')
     document.body.classList.add('is-dragging')
+    let lastReorderAt = 0
+
+    const animateReorder = (mutate: () => void) => {
+      const items = [...parent.children] as HTMLElement[]
+      const topsBefore = new Map(
+        items.map((element) => [element, element.getBoundingClientRect().top]),
+      )
+      mutate()
+      for (const element of items) {
+        const delta =
+          (topsBefore.get(element) ?? 0) -
+          element.getBoundingClientRect().top
+        if (!delta) continue
+        element.animate(
+          [{ transform: `translateY(${delta}px)` }, { transform: 'none' }],
+          { duration: 160, easing: 'ease-out' },
+        )
+      }
+    }
 
     const onMove = (moveEvent: PointerEvent) => {
+      if (Date.now() - lastReorderAt < REORDER_COOLDOWN_MILLISECONDS) return
       const siblings = [...parent.children].filter(
         (child) => child !== item,
       ) as HTMLElement[]
@@ -90,14 +117,20 @@ function makeDraggableByHandle(
           continue
         }
         const dropBefore = moveEvent.clientY < rect.top + rect.height / 2
-        parent.insertBefore(item, dropBefore ? sibling : sibling.nextSibling)
+        const target = dropBefore ? sibling : sibling.nextSibling
+        if (target === item || target === item.nextSibling) break
+        animateReorder(() => parent.insertBefore(item, target))
+        lastReorderAt = Date.now()
         break
       }
     }
     const onUp = () => {
       document.removeEventListener('pointermove', onMove)
       document.removeEventListener('pointerup', onUp)
+      summary.remove()
       item.classList.remove('dragging')
+      item.classList.add('dropped')
+      window.setTimeout(() => item.classList.remove('dropped'), 400)
       document.body.classList.remove('is-dragging')
       const endIndex = [...parent.children].indexOf(item)
       if (endIndex !== startIndex) onDrop()
@@ -105,6 +138,41 @@ function makeDraggableByHandle(
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup', onUp)
   })
+}
+
+function buildDragSummaryGlyph(): HTMLElement {
+  const glyph = document.createElement('span')
+  glyph.className = 'drag-summary__dim'
+  glyph.textContent = '⠿'
+  return glyph
+}
+
+function buildScenarioDragSummary(scenario: Scenario): HTMLElement {
+  const summary = document.createElement('div')
+  const name = document.createElement('strong')
+  name.textContent = scenario.name
+  const count = document.createElement('span')
+  count.className = 'drag-summary__dim'
+  count.textContent = `· ${scenario.mocks.length} ${scenario.mocks.length === 1 ? 'mock' : 'mocks'}`
+  summary.append(buildDragSummaryGlyph(), name, count)
+  return summary
+}
+
+function buildMockDragSummary(mock: Mock): HTMLElement {
+  const summary = document.createElement('div')
+  const method = document.createElement('strong')
+  method.textContent = mock.method.toUpperCase()
+  const url = document.createElement('span')
+  url.className = 'drag-summary__url'
+  url.textContent = mock.url || '(sin URL)'
+  const status = document.createElement('span')
+  status.className =
+    mock.status >= 400
+      ? 'drag-summary__status drag-summary__status--error'
+      : 'drag-summary__status'
+  status.textContent = String(mock.status)
+  summary.append(buildDragSummaryGlyph(), method, url, status)
+  return summary
 }
 
 async function persistScenarioOrder() {
@@ -361,12 +429,17 @@ function buildMockEditor(
   dragHandle.className = 'mock__drag'
   dragHandle.textContent = '⠿'
   dragHandle.title = 'Arrastra para reordenar (se aplica al guardar)'
-  makeDraggableByHandle(dragHandle, container, () => {
-    const parent = container.parentElement
-    if (!parent) return
-    renumberMocks(parent)
-    notifyStructuralEdit(parent)
-  })
+  makeDraggableByHandle(
+    dragHandle,
+    container,
+    () => buildMockDragSummary(mockReaders.get(container)!()),
+    () => {
+      const parent = container.parentElement
+      if (!parent) return
+      renumberMocks(parent)
+      notifyStructuralEdit(parent)
+    },
+  )
 
   const headerActions = document.createElement('span')
   headerActions.className = 'mock__header-actions'
@@ -734,7 +807,12 @@ function buildScenarioReadCard(
     dragHandle.className = 'card__drag'
     dragHandle.textContent = '⠿'
     dragHandle.title = 'Arrastra para reordenar'
-    makeDraggableByHandle(dragHandle, card, () => void persistScenarioOrder())
+    makeDraggableByHandle(
+      dragHandle,
+      card,
+      () => buildScenarioDragSummary(scenario),
+      () => void persistScenarioOrder(),
+    )
 
     const labelGroup = document.createElement('span')
     labelGroup.className = 'card__top-controls'
