@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/arturosdg/mocker/compare/v1.1.0...v1.1.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* transparent corners in extension icons ([#42](https://github.com/arturosdg/mocker/issues/42)) ([f8cab3a](https://github.com/arturosdg/mocker/commit/f8cab3a46c43a5c9f64c9a2c0c359106d23351ee))
+
 ## [1.1.0](https://github.com/arturosdg/mocker/compare/v1.0.0...v1.1.0) (2026-09-02)
 
 
