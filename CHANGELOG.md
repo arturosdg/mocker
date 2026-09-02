@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0](https://github.com/arturosdg/mocker/compare/v1.0.0...v1.1.0) (2026-09-02)
+
+
+### Features
+
+* example presence join/leave messages as raw frames ([#38](https://github.com/arturosdg/mocker/issues/38)) ([5342138](https://github.com/arturosdg/mocker/commit/53421385f579f866aa4c19f9c70f285e888bd74d))
+* example saved WebSocket messages ([#36](https://github.com/arturosdg/mocker/issues/36)) ([035f9fd](https://github.com/arturosdg/mocker/commit/035f9fdd01a538db017cde7d3b3f4d88ba3147b4))
+* popup Mocks/WebSockets modes, WS frame capture and per-session runtime log purge ([#40](https://github.com/arturosdg/mocker/issues/40)) ([9c46730](https://github.com/arturosdg/mocker/commit/9c46730079d550190e34f904d1b49356ed89f1bb))
+* popup saved WS messages list channel + body with launch button ([#37](https://github.com/arturosdg/mocker/issues/37)) ([4f239ab](https://github.com/arturosdg/mocker/commit/4f239abb64d4df3f8135a0655973d0213e57a0f3))
+* popup WS view is saved messages only, raw frames titled by name ([#39](https://github.com/arturosdg/mocker/issues/39)) ([8e8ac34](https://github.com/arturosdg/mocker/commit/8e8ac344a976a700f6bf1f82f7f93318001e7e4b))
+* saved WebSocket messages, settings tab and requests/websockets segments ([#35](https://github.com/arturosdg/mocker/issues/35)) ([f3ecea3](https://github.com/arturosdg/mocker/commit/f3ecea3f16a854b2fe12e7b7e90fe55fcd0b8dcb))
+* WebSocket push injection with Centrifugo envelope ([#33](https://github.com/arturosdg/mocker/issues/33)) ([cce0064](https://github.com/arturosdg/mocker/commit/cce0064ded2a7a165526424c7f758ef1ffef41af))
+
+
+### Bug Fixes
+
+* untrack example runtime log and gitignore .runtime ([#41](https://github.com/arturosdg/mocker/issues/41)) ([5ec7f71](https://github.com/arturosdg/mocker/commit/5ec7f71bd451c4a901c9708377ad060098b5e06c))
+
 ## [1.0.0](https://github.com/arturosdg/mocker/compare/v0.1.0...v1.0.0) (2026-09-02)
 
 
