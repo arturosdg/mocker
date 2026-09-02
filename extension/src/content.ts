@@ -1,15 +1,18 @@
-import { resolveActiveMocks, type MockerState } from './lib/state'
+import {
+  isOriginDisabled,
+  resolveActiveMocks,
+  type MockerState,
+} from './lib/state'
 
 function pushMocks(state: MockerState | undefined) {
   if (!state) return
-  const originDisabled =
-    state.disabledOrigins?.includes(location.origin) ?? false
+  const originDisabled = isOriginDisabled(state, location.origin)
   window.postMessage(
     {
       source: 'mocker-extension',
       type: 'mocks',
       mocks: originDisabled ? [] : resolveActiveMocks(state),
-      capturing: state.enabled !== false && !originDisabled,
+      capturing: !originDisabled,
     },
     '*',
   )
