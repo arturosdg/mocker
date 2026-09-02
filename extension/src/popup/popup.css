@@ -583,12 +583,8 @@ body {
   gap: 8px;
   font-family: var(--mono);
   font-size: 11px;
-  cursor: pointer;
+  color: var(--text-dim);
   padding: 2px 0;
-}
-
-.ws-socket:hover {
-  color: var(--amber);
 }
 
 .ws-socket__dot {
@@ -611,62 +607,20 @@ body {
   white-space: nowrap;
 }
 
-.ws-form {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ws-form__input {
-  font-family: var(--mono);
+.ws-empty {
   font-size: 12px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  color: var(--text-dim);
+  margin: 4px 0 8px;
 }
 
-.ws-form__input:focus {
-  outline: none;
-  border-color: var(--amber);
-}
-
-.ws-form__data {
-  resize: vertical;
-  min-height: 56px;
-}
-
-.ws-form__actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.ws-form__result {
+.ws-result {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--text-dim);
+  margin: 2px 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.button-send {
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid var(--amber);
-  border-radius: 6px;
-  background: var(--amber);
-  color: #17171c;
-  padding: 6px 14px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.button-send:hover {
-  filter: brightness(1.1);
 }
 
 .footer {
