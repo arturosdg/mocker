@@ -1107,19 +1107,19 @@ function buildScenarioEditCard(
 function renderConnection() {
   const status = document.getElementById('connection-status')!
   if (accessState === 'granted') {
-    status.textContent = ''
-    status.title = 'Proyecto conectado'
+    status.textContent = '✓'
+    status.title = 'Proyecto sincronizado'
+    status.className = 'status-pill status-pill--ok'
   } else if (accessState === 'needs-permission') {
-    status.textContent = 'reconectar'
-    status.title = 'Chrome ha caducado el permiso de la carpeta del proyecto'
+    status.textContent = '⚠'
+    status.title =
+      'Chrome ha caducado el permiso de la carpeta — pulsa para reconectar'
+    status.className = 'status-pill status-pill--warn status-pill--clickable'
   } else {
-    status.textContent = 'sin proyecto'
-    status.title = 'Importa la carpeta .mocks de tu repo'
+    status.textContent = '⚠'
+    status.title = 'Sin proyecto — pulsa para importar la carpeta .mocks'
+    status.className = 'status-pill status-pill--error status-pill--clickable'
   }
-  status.className =
-    accessState === 'granted'
-      ? 'header__status header__status--connected'
-      : 'header__status header__status--disconnected'
 }
 
 async function importProject() {
@@ -1312,6 +1312,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 document.getElementById('import-project')!.addEventListener('click', () => {
   void importProject()
+})
+
+document.getElementById('connection-status')!.addEventListener('click', () => {
+  if (accessState === 'needs-permission') {
+    void reconnectProject()
+  } else if (accessState === 'no-project') {
+    void importProject()
+  }
 })
 
 function syncArchivedVisibility() {
