@@ -30,7 +30,7 @@ function matchesUrl(mockUrl: string, parsed: URL): boolean {
 
   if (mockUrl.includes('*')) {
     const pattern = new RegExp(
-      `^${mockUrl.split('*').map(escapeRegExp).join('.*')}$`,
+      `^${stripTrailingSlashes(mockUrl).split('*').map(escapeRegExp).join('.*')}$`,
     )
     return candidates.some((candidate) => pattern.test(candidate))
   }
