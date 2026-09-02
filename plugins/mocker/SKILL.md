@@ -111,6 +111,23 @@ messages:
 With a channel, the frame ships in the Centrifugo v2 push envelope; sending
 is always a user click (the page must have a live, subscribed connection).
 
+Presence events (`join`/`leave`) use a different envelope than publications,
+so simulate them as raw frames: omit `channel` and put the full push envelope
+in `data`:
+
+```yaml
+  - name: User joins (presence)
+    data:
+      push:
+        channel: presence:demo
+        join:
+          info:
+            user: '42'
+            client: demo-client
+            conn_info:
+              name: Jane Doe
+```
+
 ## Verification: .mocks/.runtime/requests.json
 
 Last 50 requests from tabs with mocking enabled:
