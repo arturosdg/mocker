@@ -47,7 +47,11 @@ export interface CapturedRequest {
   url: string
   status: number
   mocked?: boolean
+  scenario?: string
+  mockName?: string
+  mockUrl?: string
   body?: string
+  requestBody?: string
   origin: string
   at: number
   tabId?: number

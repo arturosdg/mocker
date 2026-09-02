@@ -138,12 +138,36 @@ mocks:
 
         <h3>Para agentes: .runtime/requests.json</h3>
         <p>
-          Con el proyecto conectado, mocker vuelca las últimas requests
-          capturadas (método, URL, status, body y si las sirvió un mock) a
-          <code>.mocks/.runtime/requests.json</code>. Un agente puede editar
-          los YAML directamente y leer ese fichero para verificar qué matcheó
-          — sin abrir el navegador. Añade
+          Con el proyecto conectado, mocker vuelca las últimas 50 requests
+          capturadas a <code>.mocks/.runtime/requests.json</code>. Un agente
+          puede editar los YAML directamente y leer ese fichero para verificar
+          qué se llamó y qué matcheó — sin abrir el navegador. Añade
           <code>.mocks/.runtime/</code> a tu <code>.gitignore</code>.
+        </p>
+        <pre>
+{
+  "updatedAt": "2026-09-02T12:00:00.000Z",
+  "requests": [
+    {
+      "at": 1788350000000,        // epoch ms
+      "origin": "https://localhost:3000",
+      "tabId": 123,
+      "method": "POST",
+      "url": "https://localhost:3000/api/items/",
+      "requestBody": "{\"name\":\"x\"}",   // payload enviado (≤32KB)
+      "status": 500,
+      "body": "{\"errors\":[...]}",        // respuesta recibida (≤32KB)
+      "mocked": true,                      // la sirvió mocker
+      "scenario": "error-al-guardar",      // escenario que matcheó
+      "mockName": "Guardado roto",         // si el mock tiene nombre
+      "mockUrl": "{{api}}/api/items/"      // la URL del mock que matcheó
+    }
+  ]
+}</pre>
+        <p>
+          Las requests sin <code>mocked</code> son tráfico real que pasó de
+          largo (con su respuesta capturada): la cantera para crear mocks
+          nuevos.
         </p>
       </div>
     </main>

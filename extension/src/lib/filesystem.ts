@@ -338,7 +338,11 @@ export async function writeRuntimeRequestsLog(requests: unknown[]) {
     await writeFile(
       runtimeDirectory,
       'requests.json',
-      JSON.stringify(requests, null, 2),
+      JSON.stringify(
+        { updatedAt: new Date().toISOString(), requests },
+        null,
+        2,
+      ),
     )
   } catch {
     // best effort: the runtime log must never break capturing

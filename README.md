@@ -9,6 +9,21 @@ carpeta directamente vía File System Access — sin procesos externos.
 .mocks/ (en el repo de tu app)  ←fs→  extensión (Chrome MV3)
 ```
 
+## Capturas
+
+El popup: toggles por escenario y por mock, interruptor por origen, y el
+tráfico de la pestaña con sus mocks marcados:
+
+<img src="docs/popup.png" alt="Popup de mocker" width="400" />
+
+La página de configuración, con los escenarios en modo lectura:
+
+<img src="docs/settings.png" alt="Configuración de mocker" width="700" />
+
+Y el editor de un escenario (validación de variables, drag para reordenar):
+
+<img src="docs/editor.png" alt="Editor de escenario" width="700" />
+
 ## Estructura de un proyecto de mocks
 
 ```
@@ -80,10 +95,14 @@ la configuración.
 
 Un agente (Claude Code, etc.) trabaja sobre los mismos ficheros: edita los
 YAML de `.mocks/` con sus tools normales y la extensión recoge los cambios
-sola. Para cerrar el bucle sin navegador, mocker vuelca las últimas requests
-capturadas (método, URL, status, body real y si las sirvió un mock) a
-`.mocks/.runtime/requests.json` — el agente lo lee para verificar que su mock
-matchea. Añade `.mocks/.runtime/` al `.gitignore` del repo.
+sola. Para cerrar el bucle sin navegador, mocker vuelca las últimas 50
+requests capturadas a `.mocks/.runtime/requests.json`
+(`{ updatedAt, requests: [...] }`); cada entrada trae la llamada hecha
+(método, URL, `requestBody`), la respuesta recibida (`status`, `body`, ambos
+recortados a 32KB) y, si la interceptó mocker, `mocked: true` con `scenario`,
+`mockName` y `mockUrl` del mock que matcheó. Las entradas sin `mocked` son
+tráfico real que pasó de largo — la cantera para crear mocks nuevos. Añade
+`.mocks/.runtime/` al `.gitignore` del repo.
 
 La activación es estado del navegador (no toca los ficheros) y tiene tres
 niveles en el popup: un **toggle global** de interceptación en la cabecera,

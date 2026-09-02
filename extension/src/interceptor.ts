@@ -63,7 +63,21 @@ interface CapturedRequest {
   url: string
   status: number
   mocked?: boolean
+  scenario?: string
+  mockName?: string
+  mockUrl?: string
   body?: string
+  requestBody?: string
+}
+
+async function readRequestBody(request: Request): Promise<string | undefined> {
+  if (request.method === 'GET' || request.method === 'HEAD') return undefined
+  try {
+    const text = await request.clone().text()
+    return text ? text.slice(0, MAX_CAPTURED_BODY_LENGTH) : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function reportRequest(captured: CapturedRequest) {
@@ -101,6 +115,7 @@ function logMocked(mock: ResolvedMock, method: string, url: string) {
 async function captureFetchResponse(
   method: string,
   url: string,
+  requestBody: string | undefined,
   clonedResponse: Response,
 ) {
   try {
@@ -110,12 +125,14 @@ async function captureFetchResponse(
       url: absoluteUrl(url),
       status: clonedResponse.status,
       body: text.slice(0, MAX_CAPTURED_BODY_LENGTH),
+      requestBody,
     })
   } catch {
     reportRequest({
       method,
       url: absoluteUrl(url),
       status: clonedResponse.status,
+      requestBody,
     })
   }
 }
@@ -125,11 +142,17 @@ const originalFetch = window.fetch.bind(window)
 window.fetch = async (input, init) => {
   const request = new Request(input, init)
   const mock = findMock(request.method, request.url)
+  const requestBody = capturing ? await readRequestBody(request) : undefined
 
   if (!mock) {
     const response = await originalFetch(input, init)
     if (capturing) {
-      void captureFetchResponse(request.method, request.url, response.clone())
+      void captureFetchResponse(
+        request.method,
+        request.url,
+        requestBody,
+        response.clone(),
+      )
     }
     return response
   }
@@ -142,6 +165,10 @@ window.fetch = async (input, init) => {
       url: absoluteUrl(request.url),
       status: mock.status,
       mocked: true,
+      scenario: mock.scenarioId,
+      ...(mock.name ? { mockName: mock.name } : {}),
+      mockUrl: mock.url,
+      requestBody,
     })
   }
   if (mock.delay) {
@@ -186,6 +213,11 @@ XMLHttpRequest.prototype.send = function (
   const request = this.mockerRequest
   const mock = request && findMock(request.method, request.url)
 
+  const requestBody =
+    capturing && typeof body === 'string'
+      ? body.slice(0, MAX_CAPTURED_BODY_LENGTH)
+      : undefined
+
   if (!mock) {
     if (capturing && request) {
       this.addEventListener('load', () => {
@@ -203,6 +235,7 @@ XMLHttpRequest.prototype.send = function (
           url: absoluteUrl(request.url),
           status: this.status,
           body: responseBody,
+          requestBody,
         })
       })
     }
@@ -217,6 +250,10 @@ XMLHttpRequest.prototype.send = function (
       url: absoluteUrl(request.url),
       status: mock.status,
       mocked: true,
+      scenario: mock.scenarioId,
+      ...(mock.name ? { mockName: mock.name } : {}),
+      mockUrl: mock.url,
+      requestBody,
     })
   }
   const responseText = mockBody(mock)
