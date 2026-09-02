@@ -1,0 +1,14 @@
+{
+  "name": "mocker",
+  "description": "Herramientas de agente para mocker: mock de red por ficheros junto a la extensión de Chrome",
+  "owner": {
+    "name": "arturosdg"
+  },
+  "plugins": [
+    {
+      "name": "mocker",
+      "source": "./plugins/mocker",
+      "description": "Mock de red por ficheros: escenarios YAML en .mocks/ + verificación por .mocks/.runtime/requests.json, junto a la extensión mocker"
+    }
+  ]
+}
