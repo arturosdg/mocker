@@ -550,20 +550,30 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
     ...(state.wsMessages ?? []).map((message) => {
       const row = document.createElement('li')
       row.className = 'ws-saved-row'
+      row.title = message.name
 
-      const name = document.createElement('span')
-      name.className = 'ws-saved-row__name'
-      name.textContent = message.name
-      name.title = JSON.stringify(message.data)
+      const info = document.createElement('div')
+      info.className = 'ws-saved-row__info'
 
       const channel = document.createElement('span')
       channel.className = 'ws-saved-row__channel'
-      channel.textContent = message.channel ?? 'raw'
+      channel.textContent = message.channel || 'raw frame'
+
+      const body = document.createElement('span')
+      body.className = 'ws-saved-row__body'
+      const bodyText =
+        typeof message.data === 'string'
+          ? message.data
+          : JSON.stringify(message.data)
+      body.textContent = bodyText
+      body.title = bodyText
+
+      info.append(channel, body)
 
       const send = document.createElement('button')
       send.className = 'ws-saved-row__send'
       send.textContent = '▶'
-      send.title = 'Send this message'
+      send.title = `Send "${message.name}"`
       send.addEventListener('click', async () => {
         result.textContent = await emitWs(
           message.url ?? '',
@@ -572,7 +582,7 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
         )
       })
 
-      row.append(name, channel, send)
+      row.append(info, send)
       return row
     }),
   )
