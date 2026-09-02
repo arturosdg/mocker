@@ -590,6 +590,18 @@ body {
   white-space: nowrap;
 }
 
+.read-mock__name {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+}
+
 .read-mock__status {
   flex-shrink: 0;
   font-weight: 600;
