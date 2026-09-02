@@ -1106,4 +1106,20 @@ document.getElementById('import-project')!.addEventListener('click', () => {
   void importProject()
 })
 
+function selectTab(docs: boolean) {
+  document.getElementById('view-scenarios')!.hidden = docs
+  document.getElementById('view-docs')!.hidden = !docs
+  document
+    .getElementById('tab-scenarios')!
+    .classList.toggle('tab--active', !docs)
+  document.getElementById('tab-docs')!.classList.toggle('tab--active', docs)
+}
+
+document
+  .getElementById('tab-scenarios')!
+  .addEventListener('click', () => selectTab(false))
+document
+  .getElementById('tab-docs')!
+  .addEventListener('click', () => selectTab(true))
+
 void reloadSnapshot().then(() => render())

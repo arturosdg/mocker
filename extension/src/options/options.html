@@ -25,7 +25,12 @@
         />
       </span>
     </header>
+    <nav class="tabs">
+      <button class="tab tab--active" id="tab-scenarios">Escenarios</button>
+      <button class="tab" id="tab-docs">Documentación</button>
+    </nav>
     <main class="settings">
+      <div id="view-scenarios">
       <p class="banner banner--action" id="access-banner" hidden>
         <span id="access-banner-text"></span>
         <button class="button button--primary" id="access-banner-action"></button>
@@ -44,6 +49,88 @@
       </div>
       <div class="scenario-cards" id="scenario-list"></div>
       <p class="empty" id="empty-message" hidden></p>
+      </div>
+      <div class="docs" id="view-docs" hidden>
+        <h2>El formato de <code>.mocks/</code></h2>
+        <p>
+          Los mocks viven como YAML dentro del repo de tu app, así se
+          versionan con las ramas y se comparten con un
+          <code>git pull</code>. La estructura:
+        </p>
+        <pre>
+tu-app/
+└── .mocks/
+    ├── project.yaml            # nombre + entornos
+    └── scenarios/
+        └── lista-vacia.yaml    # un fichero = un escenario</pre>
+
+        <h3>project.yaml</h3>
+        <pre>
+name: mi-app
+environments:          # opcional
+  local:
+    api: ''            # vacío = la URL queda como pathname
+  staging:
+    api: https://api.staging.example.com</pre>
+        <p>
+          Los <strong>entornos</strong> definen variables reutilizables en las
+          URLs de los mocks (<code>{{api}}</code>). El entorno activo se elige
+          en la tarjeta de proyecto; su caso fuerte es separar dos hosts que
+          comparten pathname.
+        </p>
+
+        <h3>Un escenario (scenarios/*.yaml)</h3>
+        <pre>
+name: Error al guardar          # obligatorio
+description: El POST falla      # opcional
+mocks:
+  - name: Guardado roto         # opcional, para reconocerlo en las listas
+    method: POST                # GET / POST / PUT / PATCH / DELETE / HEAD
+    url: '{{api}}/api/items/'   # ver matching más abajo
+    status: 500                 # código de respuesta, obligatorio
+    delay: 400                  # opcional, milisegundos
+    headers:                    # opcional, se añaden a la respuesta
+      x-custom: valor
+    response:                   # el body: YAML/JSON o texto plano
+      errors:
+        - internal error</pre>
+        <p>
+          El nombre del fichero es el identificador del escenario (se genera
+          del nombre al crear desde la UI) y no cambia al renombrarlo, para
+          que la activación no se pierda.
+        </p>
+
+        <h3>Matching de URLs</h3>
+        <p>No hace falta escribir el host. Una URL de mock matchea contra la
+        URL completa, <code>origin + pathname</code> o <code>pathname</code>,
+        ignorando barras finales y la query string:</p>
+        <ul>
+          <li>
+            <code>/api/items/</code> matchea
+            <code>https://cualquier-host/api/items/?page=2</code>
+          </li>
+          <li>
+            <code>api/items</code> (sin barra inicial) matchea como fragmento:
+            cualquier pathname que lo contenga
+          </li>
+          <li>
+            <code>*</code> es comodín:
+            <code>/api/items/*/photos/</code> matchea cualquier id intermedio
+          </li>
+          <li>
+            <code>{{variable}}</code> se sustituye por el valor del entorno
+            activo antes de matchear
+          </li>
+        </ul>
+
+        <h3>Qué NO va en los ficheros</h3>
+        <p>
+          La activación (qué escenarios y mocks están encendidos, el toggle
+          global y el entorno activo) es estado del navegador: activar cosas
+          no ensucia tu <code>git status</code>. Si dos escenarios activos
+          mockean la misma URL, gana el último activado.
+        </p>
+      </div>
     </main>
     <div class="snackbar" id="snackbar" hidden></div>
     <script src="options.js"></script>
