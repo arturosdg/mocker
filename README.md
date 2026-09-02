@@ -1,65 +1,54 @@
 # Mocker
 
-Scenario-based network mocking driven by files in your repo. Los escenarios de
-mock viven como YAML en `.mocks/` dentro del repo de tu app (versionados con
-las ramas, compartidos por git); la extensión de Chrome lee y escribe esa
-carpeta directamente vía File System Access — sin procesos externos.
+Scenario-based network mocking driven by files in your repo. Mock scenarios
+live as YAML in `.mocks/` inside your app's repo (versioned with your
+branches, shared through git); the Chrome extension reads and writes that
+folder directly via File System Access — no external processes.
 
 ```
-.mocks/ (en el repo de tu app)  ←fs→  extensión (Chrome MV3)
+.mocks/ (in your app's repo)  ←fs→  extension (Chrome MV3)
 ```
 
-## Tests
+Interception works on any page — no hosts to declare. The **Mocking** toggle
+in the popup turns a specific domain (domain+port) off, and the extension
+icon turns gray on tabs whose domain is off.
 
-`npm run e2e` compila la extensión y corre la batería end-to-end (50 checks)
-sobre un Chromium real: importación y estados de conexión, matching
-(pathname, query, fragmento, comodín, variables), interceptor fetch/XHR con
-delay y precedencia, toggles por escenario/mock/dominio, capturas y
-añadir-como-mock, log de runtime, edición/CRUD/validación/archivado, reorder
-por drag, docs y panel. Usa `MOCKER_CHROME` para apuntar a un binario
-concreto; por defecto usa el Chromium de la caché de Playwright o el Chrome
-del sistema.
+## Screenshots
 
-## Capturas
+The popup: per-scenario and per-mock toggles, the per-domain switch, and the
+tab's traffic with mocked requests badged:
 
-El popup: toggles por escenario y por mock, interruptor por origen, y el
-tráfico de la pestaña con sus mocks marcados:
+<img src="docs/popup.png" alt="mocker popup" width="400" />
 
-<img src="docs/popup.png" alt="Popup de mocker" width="400" />
+The settings page, with scenarios in read mode:
 
-La página de configuración, con los escenarios en modo lectura:
+<img src="docs/settings.png" alt="mocker settings" width="700" />
 
-<img src="docs/settings.png" alt="Configuración de mocker" width="700" />
+And the scenario editor (variable validation, drag to reorder):
 
-Y el editor de un escenario (validación de variables, drag para reordenar):
+<img src="docs/editor.png" alt="scenario editor" width="700" />
 
-<img src="docs/editor.png" alt="Editor de escenario" width="700" />
-
-## Estructura de un proyecto de mocks
+## Mock project layout
 
 ```
-tu-app/
+your-app/
 └── .mocks/
-    ├── project.yaml            # nombre + entornos
+    ├── project.yaml            # name + environments
     └── scenarios/
-        └── lista-vacia.yaml    # un fichero = un escenario con sus mocks
+        └── empty-list.yaml     # one file = one scenario with its mocks
 ```
 
 ```yaml
 # project.yaml
-name: mi-app
+name: my-app
 environments:
   local:
-    api: https://api.sta.example
+    api: https://api.staging.example
 ```
 
-La intercepción funciona en cualquier página — no hay que declarar hosts. El
-toggle **Mocking** del popup apaga un dominio concreto (dominio+puerto), y el
-icono de la extensión se ve gris en las pestañas con el dominio apagado.
-
 ```yaml
-# scenarios/lista-vacia.yaml
-name: Lista vacía
+# scenarios/empty-list.yaml
+name: Empty list
 mocks:
   - method: GET
     url: '{{api}}/api/items/'
@@ -67,135 +56,133 @@ mocks:
     response: []
 ```
 
-Las variables `{{nombre}}` se resuelven con el entorno activo (se elige en la
-tarjeta de proyecto de la página de configuración) y sirven para no repetir
-hosts en cada mock: un mock, N entornos. Un valor vacío deja la URL como
-pathname a secas. Con el matching fuzzy rara vez las necesitarás — su caso
-fuerte es separar dos hosts que comparten pathname.
+`{{variables}}` resolve with the active environment (picked in the popup or
+the settings project card) and exist so hosts are never repeated per mock:
+one mock, N environments. An empty value leaves the url as a bare pathname.
+With fuzzy matching you will rarely need them — their strong case is
+separating two hosts that share a pathname.
 
-## Matching de URLs
+## URL matching
 
-No hace falta escribir el host. Una URL de mock matchea contra la URL completa,
-`origin + pathname` o `pathname`, ignorando barras finales y la query string:
+No need to write the host. A mock url matches against the full url,
+`origin + pathname` or `pathname`, ignoring trailing slashes and the query
+string:
 
-- `/api/items/` matchea `https://cualquier-host/api/items/?page=2`
-- `api/items` (sin barra inicial) matchea como fragmento: cualquier pathname
-  que lo contenga
-- `*` es comodín: `/api/items/*/photos/` matchea cualquier id intermedio
+- `/api/items/` matches `https://any-host/api/items/?page=2`
+- `api/items` (no leading slash) matches as a fragment: any pathname
+  containing it
+- `*` is a wildcard: `/api/items/*/photos/` matches any id in between
 
-## Uso
+## Usage
 
 ```bash
 npm install
 npm run build
 ```
 
-1. Carga la extensión en Chrome: `chrome://extensions` → modo desarrollador →
-   "Cargar descomprimida" → `extension/dist/`.
-2. Abre la página de configuración y pulsa **Importar proyecto**: elige la
-   carpeta `.mocks/` de tu repo (o el repo que la contiene). Eso carga el
-   proyecto y todos sus escenarios.
-3. Abre el popup y activa escenarios con el switch.
+1. Load the extension in Chrome: `chrome://extensions` → developer mode →
+   "Load unpacked" → `extension/dist/`.
+2. Open the settings page and click **Import project**: choose your repo's
+   `.mocks/` folder (or the repo containing it). That loads the project and
+   all its scenarios.
+3. Open the popup and turn scenarios on with their switches.
 
-Chrome caduca el permiso sobre la carpeta en cada sesión nueva del navegador:
-la extensión lo detecta y la página de configuración ofrece **Reconectar
-carpeta** (un clic). Los cambios hechos por fuera (un `git pull`, un agente
-editando los YAML) se recogen automáticamente cada 30 s y al abrir el popup o
-la configuración.
+Chrome expires the folder permission on every new browser session: the
+extension detects it and the status pill shows an amber warning — one click
+reconnects. Changes made outside (a `git pull`, an agent editing the YAML)
+are picked up automatically every 30s and whenever the popup or the settings
+page opens.
 
-## Para agentes
+## For agents
 
-Este repo es también un **plugin de Claude Code** con la skill `mocker`, que
-enseña al agente el flujo completo (formato de ficheros, matching,
-verificación). Instalación en dos comandos, dentro de Claude Code:
+This repo is also a **Claude Code plugin** with the `mocker` skill, which
+teaches an agent the whole workflow (file formats, matching, verification).
+Two-command install, inside Claude Code:
 
 ```
 /plugin marketplace add arturosdg/mocker
 /plugin install mocker@mocker
 ```
 
-(Funciona con el repo privado si tienes acceso git a él.) A partir de ahí el
-agente activa la skill solo cuando le pidas mockear la red, o manualmente con
-`/mocker`.
+(Works with the private repo as long as you have git access.) From then on
+the agent activates the skill whenever you ask it to mock the network, or
+manually with `/mocker`.
 
-Un agente (Claude Code, etc.) trabaja sobre los mismos ficheros: edita los
-YAML de `.mocks/` con sus tools normales y la extensión recoge los cambios
-sola. Para cerrar el bucle sin navegador, mocker vuelca las últimas 50
-requests capturadas a `.mocks/.runtime/requests.json`
-(`{ updatedAt, requests: [...] }`); cada entrada trae la llamada hecha
-(método, URL, `requestBody`), la respuesta recibida (`status`, `body`, ambos
-recortados a 32KB) y, si la interceptó mocker, `mocked: true` con `scenario`,
-`mockName` y `mockUrl` del mock que matcheó. Las entradas sin `mocked` son
-tráfico real que pasó de largo — la cantera para crear mocks nuevos. Añade
-`.mocks/.runtime/` al `.gitignore` del repo.
+An agent works on the same files: it edits the `.mocks/` YAML with its normal
+tools and the extension picks the changes up on its own. To close the loop
+without a browser, mocker dumps the last 50 captured requests to
+`.mocks/.runtime/requests.json` (`{ updatedAt, requests: [...] }`); each
+entry carries the call made (method, url, `requestBody`), the response
+received (`status`, `body`, both capped at 32KB) and, when mocker intercepted
+it, `mocked: true` plus the `scenario`, `mockName` and `mockUrl` that
+matched. Entries without `mocked` are real traffic that passed through — raw
+material for new mocks. Add `.mocks/.runtime/` to the repo's `.gitignore`.
 
-La activación es estado del navegador (no toca los ficheros) y tiene tres
-niveles en el popup: un toggle **por dominio** en la cabecera (apaga mocking y
-captura en el dominio+puerto de la pestaña actual, con el icono en gris),
-un toggle por **escenario**, y — desplegando el escenario con ▸ — un toggle por
-**mock** individual. Varios escenarios pueden estar activos a la vez y, si dos
-mockean la misma URL, gana el último activado. El contador ámbar de cada
-escenario indica cuántas requests ha matcheado en la sesión, y el botón
-inferior abre la página de configuración. La sección plegable **Red · esta
-pestaña** lista el tráfico capturado de la pestaña activa; el botón **+** de
-cada request la añade como mock al escenario elegido en «añadir a».
+## Mocked requests show in the Console
 
-## Los mocks se ven en la Console
-
-Cada request matcheada se logea en la consola de la página con la URL original
-intacta, al estilo de tweak:
+Every matched request logs to the page console with the original url intact:
 
 ```
-mocker 16:34:56 GET https://localhost:3000/api/items/ 200 (lista-vacia)
+mocker 16:34:56 GET https://localhost:3000/api/items/ 200 (empty-list)
 ```
 
-El status va en verde (2xx/3xx) o rojo (4xx/5xx) y entre paréntesis aparece el
-escenario que sirvió el mock. Las requests mockeadas no aparecen en la tab
-Network (la respuesta es sintética, nunca sale del page-world) — la Console y
-el contador verde del popup son las señales de que el mock está funcionando.
-
-## Roadmap
-
-- [x] Escenarios YAML en el repo + popup con toggles + intercepción fetch/XHR
-- [x] Settings page con gestión completa (lectura/edición, crear, duplicar,
-      archivar, reordenar, eliminar)
-- [x] File System Access: sin CLI ni procesos externos
-- [x] Captura de red con añadir-como-mock (popup y panel de DevTools)
-- [x] Request log para agentes en `.mocks/.runtime/requests.json`
-- [ ] Adopción: `.mocks/` en un repo real, empaquetado para el equipo
-- [ ] Deuda: activación de mocks por índice (baila al reordenar), matching por
-      query string, multi-proyecto
+The status is green (2xx/3xx) or red (4xx/5xx), with the serving scenario in
+parentheses. Mocked requests do not show in the Network tab (the response is
+synthetic and never leaves the page) — the Console and the amber counters in
+the popup are the signals that a mock is working.
 
 ## Settings page
 
-El botón del popup (o `chrome://extensions` → Mocker → Opciones) abre la
-página de configuración en pestaña completa. Los escenarios se muestran en
-**modo lectura** (nombre, descripción y sus mocks en filas compactas, con los
-toggles de activación operativos); **Editar** abre el formulario completo
-(nombre, descripción, mocks con nombre opcional,
-método/URL/status/delay/respuesta), con Cancelar para volver sin guardar,
-crear, duplicar, **archivar** (los escenarios archivados salen de las listas y
-dejan de interceptar; viven plegados en la sección Archivados), **reordenar
-arrastrando** (las tarjetas de escenario en lectura; los mocks por su asa ⠿ en
-edición; el orden de escenarios se persiste en `project.yaml: order`) y
-eliminar. La tarjeta de proyecto también
-es plegable. Los toggles de activación (escenario y mock) aplican al instante,
-sin pasar por Guardar; el toggle de Mocking por dominio vive en el popup.
-Renombrar = editar el campo Nombre y guardar;
-el fichero conserva su id para que la activación no se pierda. La tarjeta de
-proyecto edita `project.yaml`: nombre y los entornos con sus variables
-(sección plegable). Las URLs con `{{variables}}` se validan en vivo: borde
-verde si la variable existe en todos los entornos, ámbar si falta en alguno y
-rojo si no existe en ninguno, con el detalle en el tooltip.
+The popup button (or `chrome://extensions` → Mocker → Options) opens the
+settings page in a full tab. Scenarios render in **read mode** (name,
+description and compact mock rows with live activation toggles); **Edit**
+opens the full form (name, description, mocks with optional name,
+method/url/status/delay/response), with Cancel to leave without saving,
+create, duplicate, **archive** (archived scenarios leave the lists and stop
+intercepting; they live collapsed in the Archived section), **drag to
+reorder** (scenario cards in read mode; mocks by their ⠿ handle in edit
+mode; scenario order persists in `project.yaml: order`) and delete. The
+project card is collapsible too. Activation toggles (scenario and mock) apply
+instantly, without saving; the per-domain Mocking toggle lives in the popup.
+Renaming = editing the Name field and saving; the file keeps its id so
+activation is never lost. The project card edits `project.yaml`: name and the
+environments with their variables (collapsible section). Mock urls with
+`{{variables}}` validate live: green border while focused when the variable
+exists in every environment, amber when it is missing in some, red when it
+exists in none, with details in the tooltip and a summary banner on top.
 
-## Panel de DevTools
+## DevTools panel
 
-Además del popup, mocker añade un panel **mocker** al inspector de Chrome
-(DevTools) con la misma información, ligado a la pestaña inspeccionada:
-escenarios con sus toggles y la sección de red con sus capturas y el botón
-de añadir. Usa el que te resulte más cómodo — son la misma vista.
+Besides the popup, mocker adds a **mocker** panel to Chrome DevTools with the
+same information, bound to the inspected tab: scenarios with their toggles
+and the network section with its captures and the add button. Use whichever
+is more comfortable — they are the same view.
 
-Guardar escribe el YAML en el repo (verás el diff en `git status`) — nada
-tiene almacenamiento propio: todo queda en los ficheros. Si los ficheros
-cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte
-la edición.
+Saving writes the YAML into the repo (you will see the diff in `git status`)
+— nothing has storage of its own: everything lives in the files. If the files
+change while you are editing, a banner asks you to save or reload instead of
+clobbering your edit.
+
+## Tests
+
+`npm run e2e` builds the extension and runs the end-to-end battery (50
+checks) against a real Chromium: import and connection states, matching
+(pathname, query, fragment, wildcard, variables), fetch/XHR interception with
+delay and precedence, scenario/mock/domain toggles, captures and
+add-as-mock, the runtime log, editing/CRUD/validation/archiving, drag
+reorder, docs and the panel. Set `MOCKER_CHROME` to point at a specific
+binary; by default it uses the Playwright-cache Chromium or the system
+Chrome.
+
+## Roadmap
+
+- [ ] **Automated extension releases**: CI builds `extension/dist`, runs the
+      e2e battery and publishes a versioned zip on tag (GitHub Releases);
+      later, Chrome Web Store upload via API.
+- [ ] Stable per-mock ids: mock activation is tracked by index today, so
+      toggled-off mocks can shift when a scenario is reordered.
+- [ ] Query-string matching (deliberately ignored today).
+- [ ] Multi-project support (one imported folder at a time).
+- [ ] Settings reflecting external activation changes live (today they show
+      on the next render to protect in-progress edits).
+- [ ] Team onboarding: packaged install without cloning/building.

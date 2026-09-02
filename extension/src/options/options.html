@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>mocker — configuración</title>
+    <title>mocker — settings</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
@@ -13,14 +13,14 @@
       </span>
       <span class="header__side">
         <button class="button button--small" id="import-project">
-          Importar proyecto
+          Import project
         </button>
         <span class="header__status" id="connection-status"></span>
       </span>
     </header>
     <nav class="tabs">
-      <button class="tab tab--active" id="tab-scenarios">Escenarios</button>
-      <button class="tab" id="tab-docs">Documentación</button>
+      <button class="tab tab--active" id="tab-scenarios">Scenarios</button>
+      <button class="tab" id="tab-docs">Docs</button>
     </nav>
     <main class="settings">
       <div id="view-scenarios">
@@ -30,14 +30,14 @@
       </p>
       <div class="banner" id="validation-banner" hidden></div>
       <p class="banner" id="stale-banner" hidden>
-        Los ficheros han cambiado mientras editabas — guarda tu cambio o
-        recarga la página para ver la última versión.
+        The files changed while you were editing — save your change or reload
+        the page to see the latest version.
       </p>
       <div class="scenario-cards" id="project-container"></div>
       <div class="section-header">
-        <h2 class="section-header__title">Escenarios</h2>
+        <h2 class="section-header__title">Scenarios</h2>
         <button class="button button--primary" id="new-scenario">
-          Nuevo escenario
+          New scenario
         </button>
       </div>
       <div class="scenario-cards" id="scenario-list"></div>
@@ -51,98 +51,97 @@
       </div>
       </div>
       <div class="docs" id="view-docs" hidden>
-        <h2>El formato de <code>.mocks/</code></h2>
+        <h2>The <code>.mocks/</code> format</h2>
         <p>
-          Los mocks viven como YAML dentro del repo de tu app, así se
-          versionan con las ramas y se comparten con un
-          <code>git pull</code>. La estructura:
+          Mocks live as YAML inside your app's repo, so they are versioned
+          with your branches and shared with a <code>git pull</code>. The
+          layout:
         </p>
         <pre>
-tu-app/
+your-app/
 └── .mocks/
-    ├── project.yaml            # nombre + entornos
+    ├── project.yaml            # name + environments
     └── scenarios/
-        └── lista-vacia.yaml    # un fichero = un escenario</pre>
+        └── empty-list.yaml     # one file = one scenario</pre>
 
         <h3>project.yaml</h3>
         <pre>
-name: mi-app
-order:                 # opcional: orden de los escenarios en las listas
-  - lista-vacia
-  - error-al-guardar
-environments:          # opcional
+name: my-app
+order:                 # optional: scenario order in the lists
+  - empty-list
+  - save-error
+environments:          # optional
   local:
-    api: ''            # vacío = la URL queda como pathname
+    api: ''            # empty = the url stays a bare pathname
   staging:
     api: https://api.staging.example.com</pre>
         <p>
-          Los <strong>entornos</strong> definen variables reutilizables en las
-          URLs de los mocks (<code>{{api}}</code>). El entorno activo se elige
-          en la tarjeta de proyecto; su caso fuerte es separar dos hosts que
-          comparten pathname.
+          <strong>Environments</strong> define variables reusable in mock urls
+          (<code>{{api}}</code>). The active environment is picked in the
+          project card or the popup; its strongest use case is separating two
+          hosts that share a pathname.
         </p>
 
-        <h3>Un escenario (scenarios/*.yaml)</h3>
+        <h3>A scenario (scenarios/*.yaml)</h3>
         <pre>
-name: Error al guardar          # obligatorio
-description: El POST falla      # opcional
-archived: true                  # opcional: lo oculta y desactiva
+name: Save error                # required
+description: The POST fails     # optional
+archived: true                  # optional: hides and deactivates it
 mocks:
-  - name: Guardado roto         # opcional, para reconocerlo en las listas
+  - name: Broken save           # optional, to recognize it in lists
     method: POST                # GET / POST / PUT / PATCH / DELETE / HEAD
-    url: '{{api}}/api/items/'   # ver matching más abajo
-    status: 500                 # código de respuesta, obligatorio
-    delay: 400                  # opcional, milisegundos
-    headers:                    # opcional, se añaden a la respuesta
-      x-custom: valor
-    response:                   # el body: YAML/JSON o texto plano
+    url: '{{api}}/api/items/'   # see matching below
+    status: 500                 # response code, required
+    delay: 400                  # optional, milliseconds
+    headers:                    # optional, added to the response
+      x-custom: value
+    response:                   # the body: YAML/JSON or plain text
       errors:
         - internal error</pre>
         <p>
-          El nombre del fichero es el identificador del escenario (se genera
-          del nombre al crear desde la UI) y no cambia al renombrarlo, para
-          que la activación no se pierda.
+          The file name is the scenario id (generated from the name when
+          created from the UI) and does not change on rename, so activation
+          state is never lost.
         </p>
 
-        <h3>Matching de URLs</h3>
-        <p>No hace falta escribir el host. Una URL de mock matchea contra la
-        URL completa, <code>origin + pathname</code> o <code>pathname</code>,
-        ignorando barras finales y la query string:</p>
+        <h3>URL matching</h3>
+        <p>No need to write the host. A mock url matches against the full
+        url, <code>origin + pathname</code> or <code>pathname</code>,
+        ignoring trailing slashes and the query string:</p>
         <ul>
           <li>
-            <code>/api/items/</code> matchea
-            <code>https://cualquier-host/api/items/?page=2</code>
+            <code>/api/items/</code> matches
+            <code>https://any-host/api/items/?page=2</code>
           </li>
           <li>
-            <code>api/items</code> (sin barra inicial) matchea como fragmento:
-            cualquier pathname que lo contenga
+            <code>api/items</code> (no leading slash) matches as a fragment:
+            any pathname containing it
           </li>
           <li>
-            <code>*</code> es comodín:
-            <code>/api/items/*/photos/</code> matchea cualquier id intermedio
+            <code>*</code> is a wildcard:
+            <code>/api/items/*/photos/</code> matches any id in between
           </li>
           <li>
-            <code>{{variable}}</code> se sustituye por el valor del entorno
-            activo antes de matchear
+            <code>{{variable}}</code> is replaced with the active
+            environment's value before matching
           </li>
         </ul>
 
-        <h3>Qué NO va en los ficheros</h3>
+        <h3>What does NOT go in the files</h3>
         <p>
-          La activación (qué escenarios y mocks están encendidos, los dominios
-          apagados y el entorno activo) es estado del
-          navegador: activar cosas no ensucia tu <code>git status</code>. Si
-          dos escenarios activos mockean la misma URL, gana el último
-          activado.
+          Activation (which scenarios and mocks are on, disabled domains and
+          the active environment) is browser state: turning things on never
+          dirties your <code>git status</code>. When two active scenarios
+          mock the same url, the last activated one wins.
         </p>
 
-        <h3>Para agentes: .runtime/requests.json</h3>
+        <h3>For agents: .runtime/requests.json</h3>
         <p>
-          Con el proyecto conectado, mocker vuelca las últimas 50 requests
-          capturadas a <code>.mocks/.runtime/requests.json</code>. Un agente
-          puede editar los YAML directamente y leer ese fichero para verificar
-          qué se llamó y qué matcheó — sin abrir el navegador. Añade
-          <code>.mocks/.runtime/</code> a tu <code>.gitignore</code>.
+          With the project connected, mocker dumps the last 50 captured
+          requests to <code>.mocks/.runtime/requests.json</code>. An agent
+          can edit the YAML files directly and read that file to verify what
+          was called and what matched — without opening a browser. Add
+          <code>.mocks/.runtime/</code> to your <code>.gitignore</code>.
         </p>
         <pre>
 {
@@ -154,20 +153,19 @@ mocks:
       "tabId": 123,
       "method": "POST",
       "url": "https://localhost:3000/api/items/",
-      "requestBody": "{\"name\":\"x\"}",   // payload enviado (≤32KB)
+      "requestBody": "{\"name\":\"x\"}",   // payload sent (≤32KB)
       "status": 500,
-      "body": "{\"errors\":[...]}",        // respuesta recibida (≤32KB)
-      "mocked": true,                      // la sirvió mocker
-      "scenario": "error-al-guardar",      // escenario que matcheó
-      "mockName": "Guardado roto",         // si el mock tiene nombre
-      "mockUrl": "{{api}}/api/items/"      // la URL del mock que matcheó
+      "body": "{\"errors\":[...]}",        // response received (≤32KB)
+      "mocked": true,                      // served by mocker
+      "scenario": "save-error",            // scenario that matched
+      "mockName": "Broken save",           // if the mock has a name
+      "mockUrl": "{{api}}/api/items/"      // the mock url that matched
     }
   ]
 }</pre>
         <p>
-          Las requests sin <code>mocked</code> son tráfico real que pasó de
-          largo (con su respuesta capturada): la cantera para crear mocks
-          nuevos.
+          Requests without <code>mocked</code> are real traffic that passed
+          through (with its captured response): raw material for new mocks.
         </p>
       </div>
     </main>

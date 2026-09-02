@@ -10,92 +10,93 @@ description: >-
   mockear la red, escenario de mocks, interceptar llamadas.
 ---
 
-# mocker — mocks de red por ficheros
+# mocker — file-driven network mocks
 
-mocker es una extensión de Chrome que intercepta `fetch`/XHR y sirve
-respuestas definidas en YAML dentro del repo de la app. Tu interfaz como
-agente son **ficheros**: escribes escenarios en `.mocks/` y lees el log de
-requests en `.mocks/.runtime/requests.json`. No hay CLI ni servidor.
+mocker is a Chrome extension that intercepts `fetch`/XHR and serves responses
+defined in YAML inside the app's repo. Your interface as an agent is
+**files**: you write scenarios under `.mocks/` and read the request log at
+`.mocks/.runtime/requests.json`. There is no CLI and no server.
 
-## Localiza el proyecto
+## Locate the project
 
-Busca un directorio `.mocks/` con `project.yaml` en la raíz del repo. Si no
-existe, créalo (y sugiere al usuario añadir `.mocks/.runtime/` al
-`.gitignore`). El usuario debe tener la extensión instalada y el proyecto
-importado (Configuración → Importar proyecto); si el log de runtime no se
-actualiza, pídele que compruebe el punto verde de conexión en el popup.
+Look for a `.mocks/` directory with `project.yaml` at the repo root. If it
+does not exist, create it (and suggest adding `.mocks/.runtime/` to the
+`.gitignore`). The user must have the extension installed and the project
+imported (Settings → Import project); if the runtime log never updates, ask
+them to check the green status pill in the popup.
 
-## Formato de ficheros
+## File formats
 
 ```
 .mocks/
-├── project.yaml            # nombre + entornos (opcional)
+├── project.yaml            # name + environments (optional)
 └── scenarios/
-    └── <id>.yaml           # un fichero = un escenario
+    └── <id>.yaml           # one file = one scenario
 ```
 
 `project.yaml`:
 
 ```yaml
-name: mi-app
-order:                # opcional: orden de escenarios en la UI
-  - lista-vacia
-environments:         # opcional: variables {{x}} para las URLs
+name: my-app
+order:                # optional: scenario order in the UI
+  - empty-list
+environments:         # optional: {{x}} variables for urls
   local:
-    api: ''           # vacío = la URL queda como pathname
+    api: ''           # empty = the url stays a bare pathname
   staging:
     api: https://api.staging.example.com
 ```
 
-Escenario (`scenarios/<id>.yaml`) — el nombre del fichero es el id, en
-kebab-case, y no se renombra:
+Scenario (`scenarios/<id>.yaml`) — the file name is the id, kebab-case, and
+is never renamed:
 
 ```yaml
-name: Error al guardar          # obligatorio
-description: El POST falla      # opcional
-archived: true                  # opcional: lo oculta y desactiva
+name: Save error                # required
+description: The POST fails     # optional
+archived: true                  # optional: hides and deactivates it
 mocks:
-  - name: Guardado roto         # opcional
+  - name: Broken save           # optional
     method: POST                # GET/POST/PUT/PATCH/DELETE/HEAD
-    url: /api/items/            # ver matching
-    status: 500                 # obligatorio
-    delay: 400                  # opcional, ms
-    headers:                    # opcional
-      x-custom: valor
-    response:                   # body: YAML/JSON o texto plano
+    url: /api/items/            # see matching
+    status: 500                 # required
+    delay: 400                  # optional, ms
+    headers:                    # optional
+      x-custom: value
+    response:                   # body: YAML/JSON or plain text
       errors:
         - internal error
 ```
 
-Los bodies van con la forma cruda de la API (p. ej. snake_case si la API
-responde snake_case) — mocker no transforma nada.
+Bodies use the API's raw shape (e.g. snake_case if the API responds
+snake_case) — mocker transforms nothing.
 
-## Matching de URLs
+## URL matching
 
-No escribas el host salvo que haga falta. Un mock matchea por URL completa,
-`origin+pathname` o `pathname`, ignorando barras finales y query string:
+Do not write the host unless you need it. A mock matches by full url,
+`origin+pathname` or `pathname`, ignoring trailing slashes and the query
+string:
 
-- `/api/items/` matchea `https://cualquier-host/api/items/?page=2`
-- `api/items` (sin barra inicial) matchea como fragmento del pathname
-- `*` es comodín: `/api/items/*/photos/`
-- `{{variable}}` se resuelve con el entorno activo — su caso fuerte es
-  separar dos hosts que comparten pathname; entonces usa URL completa con
-  variable de host
+- `/api/items/` matches `https://any-host/api/items/?page=2`
+- `api/items` (no leading slash) matches as a pathname fragment
+- `*` is a wildcard: `/api/items/*/photos/`
+- `{{variable}}` resolves with the active environment — its strong case is
+  separating two hosts that share a pathname; then use a full url with a
+  host variable
 
-## Flujo de trabajo
+## Workflow
 
-1. Escribe o edita el YAML del escenario. La extensión recoge cambios cada
-   ~30 s, o al instante cuando el usuario abre el popup o la configuración —
-   dile "abre el popup de mocker" para forzar la sincronización.
-2. **La activación es estado del navegador, no tuya**: pide al usuario que
-   encienda el escenario con su switch en el popup. Si dos escenarios activos
-   mockean la misma URL, gana el último activado.
-3. Pide al usuario que use la app (o recargue la pestaña), y verifica en el
-   log de runtime.
+1. Write or edit the scenario YAML. The extension picks up changes every
+   ~30s, or instantly when the user opens the popup or the settings page —
+   tell them "open the mocker popup" to force a sync.
+2. **Activation is browser state, not yours**: ask the user to turn the
+   scenario on with its switch in the popup. When two active scenarios mock
+   the same url, the last activated one wins.
+3. Ask the user to use the app (or reload the tab), then verify in the
+   runtime log.
 
-## Verificación: .mocks/.runtime/requests.json
+## Verification: .mocks/.runtime/requests.json
 
-Últimas 50 requests de las pestañas con mocking activo:
+Last 50 requests from tabs with mocking enabled:
 
 ```json
 {
@@ -110,26 +111,25 @@ No escribas el host salvo que haga falta. Un mock matchea por URL completa,
       "status": 500,
       "body": "{\"errors\":[...]}",
       "mocked": true,
-      "scenario": "error-al-guardar",
-      "mockName": "Guardado roto",
+      "scenario": "save-error",
+      "mockName": "Broken save",
       "mockUrl": "/api/items/"
     }
   ]
 }
 ```
 
-- `mocked: true` + `scenario`/`mockUrl` → tu mock matcheó.
-- Sin `mocked` → tráfico real que pasó de largo: si esperabas matchear,
-  revisa método/URL; si no, su `body` real es material para crear el mock.
-- El fichero solo se actualiza mientras el usuario navega con la extensión
-  conectada; `updatedAt` viejo = no hay tráfico nuevo, no un fallo.
+- `mocked: true` + `scenario`/`mockUrl` → your mock matched.
+- No `mocked` → real traffic that passed through: if you expected a match,
+  review method/url; if not, its real `body` is material for building the
+  mock.
+- The file only updates while the user browses with the extension connected;
+  a stale `updatedAt` means no new traffic, not a failure.
 
-## Errores comunes
+## Common mistakes
 
-- Mock que no matchea: método distinto, host escrito con typo (mejor
-  pathname), o `{{variable}}` inexistente en el entorno activo (la UI lo
-  marca en rojo).
-- El escenario existe pero no intercepta: está apagado (switch), archivado
-  (`archived: true`), o el dominio está desactivado (toggle del popup /
-  icono gris).
-- No edites la activación ni intentes tocar `chrome.storage`: no es tuyo.
+- Mock not matching: wrong method, host typo (prefer bare pathnames), or a
+  `{{variable}}` missing from the active environment (the UI flags it red).
+- Scenario exists but does not intercept: its switch is off, it is archived
+  (`archived: true`), or the domain is disabled (popup toggle / gray icon).
+- Do not edit activation or touch `chrome.storage`: it is not yours.

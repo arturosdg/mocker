@@ -395,9 +395,9 @@ check(
 await settings.bringToFront()
 await settings.waitForTimeout(300)
 const alphaCard = settings.locator('[data-scenario-id="alpha"]')
-await alphaCard.getByText('Editar').click()
+await alphaCard.getByRole('button', { name: 'Edit', exact: true }).click()
 await settings.waitForTimeout(300)
-const saveButton = alphaCard.getByText('Guardar')
+const saveButton = alphaCard.getByRole('button', { name: 'Save' })
 check('guardar deshabilitado sin cambios', await saveButton.isDisabled())
 await alphaCard.locator('.card__header input').first().fill('Alpha renombrada')
 check('guardar habilitado al editar', !(await saveButton.isDisabled()))
@@ -413,9 +413,9 @@ check(
   (await settings.locator('[data-scenario-id="alpha"].card--read').count()) === 1,
 )
 
-await settings.locator('[data-scenario-id="bravo"]').getByText('Editar').click()
+await settings.locator('[data-scenario-id="bravo"]').getByRole('button', { name: 'Edit', exact: true }).click()
 await settings.waitForTimeout(200)
-await settings.locator('[data-scenario-id="bravo"]').getByText('Cancelar').click()
+await settings.locator('[data-scenario-id="bravo"]').getByRole('button', { name: 'Cancel' }).click()
 await settings.waitForTimeout(200)
 check(
   'cancelar vuelve a lectura',
@@ -425,24 +425,24 @@ check(
 await settings.locator('#new-scenario').click()
 const newCard = settings.locator('#scenario-list .card').first()
 await newCard.locator('.card__header input').first().fill('Creado en e2e')
-await newCard.getByText('Añadir mock').click()
+await newCard.getByRole('button', { name: 'Add mock' }).click()
 await newCard.locator('.mock .field input[type=text]:not(.mock__name)').first().fill('/api/nuevo/')
-await newCard.getByText('Guardar').click()
+await newCard.getByRole('button', { name: 'Save' }).click()
 await settings.waitForTimeout(800)
 check(
   'crear escenario escribe fichero con slug',
   (await readOpfs(['scenarios', 'creado-en-e2e.yaml'])).includes('/api/nuevo/'),
 )
 
-await settings.locator('[data-scenario-id="creado-en-e2e"]').getByText('Editar').click()
+await settings.locator('[data-scenario-id="creado-en-e2e"]').getByRole('button', { name: 'Edit', exact: true }).click()
 await settings.waitForTimeout(200)
-await settings.locator('[data-scenario-id="creado-en-e2e"]').getByText('Duplicar').click()
+await settings.locator('[data-scenario-id="creado-en-e2e"]').getByRole('button', { name: 'Duplicate' }).click()
 await settings.waitForTimeout(800)
 check(
   'duplicar crea copia',
   (await settings.locator('[data-scenario-id="creado-en-e2e-copia"]').count()) === 1,
 )
-await settings.locator('[data-scenario-id="creado-en-e2e"]').getByText('Eliminar').click()
+await settings.locator('[data-scenario-id="creado-en-e2e"]').getByRole('button', { name: 'Delete', exact: true }).click()
 await settings.waitForTimeout(800)
 check(
   'eliminar borra el escenario',
@@ -462,11 +462,11 @@ check(
   'input en rojo por variable inexistente',
   (await settings.locator('[data-scenario-id="badvar"] .input--var-error').count()) === 1,
 )
-await settings.locator('[data-scenario-id="badvar"]').getByText('Cancelar').click()
+await settings.locator('[data-scenario-id="badvar"]').getByRole('button', { name: 'Cancel' }).click()
 await settings.waitForTimeout(300)
 
 // ───────────────────────── G. Archivar
-await settings.locator('[data-scenario-id="arch"]').getByText('Archivar').click()
+await settings.locator('[data-scenario-id="arch"]').getByRole('button', { name: 'Archive', exact: true }).click()
 await settings.waitForTimeout(800)
 check(
   'archivado sale de la lista',
@@ -478,7 +478,7 @@ check(
 )
 check('archivado deja de interceptar', (await getJson('/api/arch/')).body.real === true)
 await settings.locator('#archived-toggle').click()
-await settings.locator('#archived-list').getByText('Desarchivar').click()
+await settings.locator('#archived-list').getByRole('button', { name: 'Unarchive' }).click()
 await settings.waitForTimeout(800)
 check(
   'desarchivar lo devuelve',
@@ -522,7 +522,7 @@ check(
     .getAttribute('data-scenario-id')) !== firstId,
 )
 
-await settings.locator('[data-scenario-id="permock"]').getByText('Editar').click()
+await settings.locator('[data-scenario-id="permock"]').getByRole('button', { name: 'Edit', exact: true }).click()
 await settings.waitForTimeout(300)
 const mockUrls = () =>
   settings
@@ -538,10 +538,10 @@ const afterOrder = await mockUrls()
 check(
   'drag de mock reordena y habilita guardar',
   afterOrder[0] === beforeOrder[1] &&
-    !(await settings.locator('[data-scenario-id="permock"]').getByText('Guardar').isDisabled()),
+    !(await settings.locator('[data-scenario-id="permock"]').getByRole('button', { name: 'Save' }).isDisabled()),
   `${beforeOrder} → ${afterOrder}`,
 )
-await settings.locator('[data-scenario-id="permock"]').getByText('Cancelar').click()
+await settings.locator('[data-scenario-id="permock"]').getByRole('button', { name: 'Cancel' }).click()
 
 // ───────────────────────── I. Docs y panel de DevTools
 await settings.locator('#tab-docs').click()
