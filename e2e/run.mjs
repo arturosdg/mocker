@@ -193,7 +193,7 @@ mocks:
   await write(
     mocks,
     'websockets.yaml',
-    'messages:\n  - name: New task push\n    channel: tasks:e2e\n    data:\n      n: 1\n',
+    'messages:\n  - name: New task push\n    channel: tasks:e2e\n    data:\n      n: 1\n  - name: Plain refresh\n    data: plain-frame\n',
   )
   await write(
     scenarios,
@@ -602,36 +602,22 @@ check(
   'socket listado con su url',
   (await socketRow.textContent()).includes('/connection/websocket'),
 )
-await socketRow.click()
 check(
-  'click en socket rellena la url',
-  (await popup.locator('#ws-url').inputValue()).includes('/connection/websocket'),
-)
-await popup.locator('#ws-channel').fill('tasks:42')
-await popup.locator('#ws-data').fill('{"count": 3}')
-await popup.locator('#ws-send').click()
-await popup.waitForTimeout(400)
-check(
-  'emisión manual reporta destino',
+  'resultado de envío visible',
   (await popup.locator('#ws-result').textContent()).includes('sent to 1'),
 )
-const centrifugoFrame = await app.evaluate(() =>
-  window.__wsMessages.at(-1) ? JSON.parse(window.__wsMessages.at(-1)) : null,
-)
+const rawRow = popup.locator('.ws-saved-row').nth(1)
 check(
-  'la página recibe el sobre de Centrifugo',
-  centrifugoFrame?.push?.channel === 'tasks:42' &&
-    centrifugoFrame?.push?.pub?.data?.count === 3,
-  JSON.stringify(centrifugoFrame),
+  'frame crudo titulado con su nombre',
+  (await rawRow.locator('.ws-saved-row__channel').textContent()) === 'Plain refresh',
 )
-await popup.locator('#ws-channel').fill('')
-await popup.locator('#ws-data').fill('plain-frame')
-await popup.locator('#ws-send').click()
+await rawRow.locator('.ws-saved-row__send').click()
 await popup.waitForTimeout(400)
 check(
-  'frame crudo sin canal',
+  'frame crudo entregado sin sobre',
   await app.evaluate(() => window.__wsMessages.at(-1) === 'plain-frame'),
 )
+check('sin formulario manual en el popup', (await popup.locator('#ws-send').count()) === 0)
 await popup.locator('#segment-requests').click()
 await popup.waitForTimeout(300)
 check('vuelta al segmento de requests', await popup.locator('#requests-view').isVisible())
@@ -640,7 +626,7 @@ check('vuelta al segmento de requests', await popup.locator('#requests-view').is
 await settings.bringToFront()
 await settings.locator('#tab-websockets').click()
 await settings.waitForTimeout(300)
-check('tab websockets con el mensaje', (await settings.locator('#ws-message-list .card').count()) === 1)
+check('tab websockets con los mensajes', (await settings.locator('#ws-message-list .card').count()) === 2)
 check('guardar ws deshabilitado sin cambios', await settings.locator('#ws-save').isDisabled())
 await settings.locator('#ws-message-list .card__header input').first().fill('Renamed push')
 check('guardar ws habilitado al editar', !(await settings.locator('#ws-save').isDisabled()))

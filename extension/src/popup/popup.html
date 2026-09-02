@@ -67,30 +67,11 @@
         </div>
         <div id="ws-view" hidden>
           <ul class="network__list ws-saved" id="ws-saved-list"></ul>
+          <p class="ws-empty" id="ws-empty" hidden>
+            No saved messages — add them in settings › WebSockets.
+          </p>
           <ul class="network__list ws-sockets" id="ws-socket-list"></ul>
-          <div class="ws-form">
-            <input
-              type="text"
-              class="ws-form__input"
-              id="ws-url"
-              placeholder="socket url contains… (empty = all)"
-            />
-            <input
-              type="text"
-              class="ws-form__input"
-              id="ws-channel"
-              placeholder="channel (empty = raw frame)"
-            />
-            <textarea
-              class="ws-form__input ws-form__data"
-              id="ws-data"
-              placeholder='data — JSON or plain text, e.g. { "count": 2 }'
-            ></textarea>
-            <div class="ws-form__actions">
-              <span class="ws-form__result" id="ws-result"></span>
-              <button class="button-send" id="ws-send">Send</button>
-            </div>
-          </div>
+          <p class="ws-result" id="ws-result"></p>
         </div>
       </div>
     </section>

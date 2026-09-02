@@ -545,9 +545,11 @@ async function emitWs(
 
 function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
   const result = document.getElementById('ws-result')!
+  const savedMessages = state.wsMessages ?? []
+  document.getElementById('ws-empty')!.hidden = savedMessages.length > 0
 
   document.getElementById('ws-saved-list')!.replaceChildren(
-    ...(state.wsMessages ?? []).map((message) => {
+    ...savedMessages.map((message) => {
       const row = document.createElement('li')
       row.className = 'ws-saved-row'
       row.title = message.name
@@ -557,7 +559,7 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
 
       const channel = document.createElement('span')
       channel.className = 'ws-saved-row__channel'
-      channel.textContent = message.channel || 'raw frame'
+      channel.textContent = message.channel || message.name
 
       const body = document.createElement('span')
       body.className = 'ws-saved-row__body'
@@ -587,12 +589,10 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
     }),
   )
 
-  const urlInput = document.getElementById('ws-url') as HTMLInputElement
   document.getElementById('ws-socket-list')!.replaceChildren(
     ...sockets.map((socket) => {
       const row = document.createElement('li')
       row.className = 'ws-socket'
-      row.title = 'Use this socket url in the form'
 
       const dot = document.createElement('span')
       dot.className = socket.open
@@ -605,36 +605,8 @@ function renderWsView(state: MockerState, sockets: TrackedSocketInfo[]) {
       url.title = socket.url
 
       row.append(dot, url)
-      row.addEventListener('click', () => {
-        urlInput.value = socket.url
-      })
       return row
     }),
-  )
-}
-
-async function sendWebSocketMessage() {
-  const result = document.getElementById('ws-result')!
-  const channel = (
-    document.getElementById('ws-channel') as HTMLInputElement
-  ).value.trim()
-  const dataText = (
-    document.getElementById('ws-data') as HTMLTextAreaElement
-  ).value
-  if (!dataText.trim()) {
-    result.textContent = 'data is required'
-    return
-  }
-  let payload: unknown = dataText
-  try {
-    payload = JSON.parse(dataText)
-  } catch {
-    // plain text frame
-  }
-  result.textContent = await emitWs(
-    (document.getElementById('ws-url') as HTMLInputElement).value.trim(),
-    channel,
-    payload,
   )
 }
 
@@ -693,9 +665,6 @@ document
     void render()
   })
 
-document.getElementById('ws-send')!.addEventListener('click', () => {
-  void sendWebSocketMessage()
-})
 
 document
   .getElementById('network-destination')!
