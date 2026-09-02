@@ -543,11 +543,68 @@ body {
   margin: 8px 0 0;
 }
 
-.network__controls {
+.card--read {
+  padding: 14px 16px;
+}
+
+.card__name {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+
+.card__description {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin: 0 0 4px;
+}
+
+.card__read-mocks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.read-mock {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 10px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 3px 0;
+}
+
+.read-mock__method {
+  flex-shrink: 0;
+  width: 52px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.read-mock__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.read-mock__status {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.read-mock__status--error {
+  color: var(--red);
+}
+
+.card__footer--read {
+  justify-content: flex-end;
+  border-top: none;
+  padding-top: 8px;
+  margin-top: 0;
 }
 
 .network__destination {
@@ -562,67 +619,6 @@ body {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238e8e98' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 9px center;
-}
-
-.network__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 340px;
-  overflow-y: auto;
-}
-
-.network__empty {
-  color: var(--text-dim);
-  margin: 8px 0 4px;
-}
-
-.request-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--mono);
-  font-size: 12px;
-}
-
-.request-row__time {
-  flex-shrink: 0;
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
-.request-row__method {
-  flex-shrink: 0;
-  width: 52px;
-  font-weight: 600;
-}
-
-.request-row__url {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.request-row__status {
-  flex-shrink: 0;
-  font-weight: 600;
-  color: var(--green);
-}
-
-.request-row__status--error {
-  color: var(--red);
-}
-
-.request-row__mocked {
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 600;
-  color: #17171c;
-  background: var(--amber);
-  border-radius: 8px;
-  padding: 1px 7px;
 }
 
 .empty {

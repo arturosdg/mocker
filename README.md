@@ -115,10 +115,13 @@ el contador verde del popup son las señales de que el mock está funcionando.
 
 ## Settings page
 
-El engranaje del popup (o `chrome://extensions` → Mocker → Opciones) abre la
-página de configuración en pestaña completa: los escenarios como tarjetas
-editables (nombre, descripción, mocks con nombre opcional,
-método/URL/status/delay/respuesta), crear, duplicar y eliminar. Los toggles de
+El botón del popup (o `chrome://extensions` → Mocker → Opciones) abre la
+página de configuración en pestaña completa. Los escenarios se muestran en
+**modo lectura** (nombre, descripción y sus mocks en filas compactas, con los
+toggles de activación operativos); **Editar** abre el formulario completo
+(nombre, descripción, mocks con nombre opcional,
+método/URL/status/delay/respuesta), con Cancelar para volver sin guardar,
+crear, duplicar y eliminar. La tarjeta de proyecto también es plegable. Los toggles de
 activación (global, escenario y mock) también viven aquí y aplican al
 instante, sin pasar por Guardar. Renombrar = editar el campo Nombre y guardar;
 el fichero conserva su id para que la activación no se pierda. La tarjeta de
@@ -127,14 +130,12 @@ proyecto edita `project.yaml`: nombre y los entornos con sus variables
 verde si la variable existe en todos los entornos, ámbar si falta en alguno y
 rojo si no existe en ninguno, con el detalle en el tooltip.
 
-## Panel de red
+## Panel de DevTools
 
-En la misma página, la sección **Red** lista las últimas requests fetch/XHR
-observadas en las pestañas con Mocking encendido (método, URL, status, y
-`mock` si la sirvió mocker), con el body real capturado. Elige un escenario
-destino y pulsa **Añadir** para convertir cualquier request en un mock de ese
-escenario — URL como pathname y la respuesta real como body — sin escribir
-nada a mano. **Limpiar** vacía la lista. **Guardar escribe el YAML en el repo vía daemon**
+Además del popup, mocker añade un panel **mocker** al inspector de Chrome
+(DevTools) con la misma información, ligado a la pestaña inspeccionada:
+escenarios con sus toggles y la sección de red con sus capturas y el botón
+de añadir. Usa el que te resulte más cómodo — son la misma vista. **Guardar escribe el YAML en el repo vía daemon**
 (verás el diff en `git status`) — la página no tiene almacenamiento propio: el
 watcher devuelve el cambio y todo queda en los ficheros. Si los ficheros
 cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte
