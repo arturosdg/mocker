@@ -1,6 +1,7 @@
 import {
   getAccessState,
   reloadSnapshot,
+  requestAccess,
   updateScenario,
   type AccessState,
   type WriteResult,
@@ -198,18 +199,32 @@ function renderConnection() {
   if (accessState === 'granted') {
     status.textContent = ''
     status.title = 'Proyecto conectado'
+    status.className = 'header__status header__status--connected'
   } else if (accessState === 'needs-permission') {
-    status.textContent = 'reconectar'
+    status.textContent = '↻'
     status.title =
-      'Chrome ha caducado el permiso de la carpeta — reconéctala en Configuración'
+      'Chrome ha caducado el permiso de la carpeta — pulsa para reconectar'
+    status.className = 'header__status header__status--action'
   } else {
     status.textContent = 'sin proyecto'
-    status.title = 'Importa la carpeta .mocks de tu repo desde Configuración'
+    status.title = 'Pulsa para importar la carpeta .mocks de tu repo'
+    status.className =
+      'header__status header__status--disconnected header__status--clickable'
   }
-  status.className =
-    accessState === 'granted'
-      ? 'header__status header__status--connected'
-      : 'header__status header__status--disconnected'
+}
+
+async function handleConnectionClick() {
+  if (accessState === 'needs-permission') {
+    const granted = await requestAccess()
+    if (granted) {
+      await reloadSnapshot()
+      await render()
+      return
+    }
+  }
+  if (accessState !== 'granted') {
+    void chrome.runtime.openOptionsPage()
+  }
 }
 
 function renderOriginToggle(state: MockerState) {
@@ -222,6 +237,7 @@ function renderOriginToggle(state: MockerState) {
   const host = activeOrigin.replace(/^https?:\/\//, '')
   const label = document.getElementById('origin-label')!
   label.textContent = host
+  label.title = `Mocking en ${activeOrigin}`
   const toggle = document.getElementById('origin-toggle') as HTMLInputElement
   toggle.title = `Mocking en ${host}`
   toggle.checked = !(state.disabledOrigins ?? []).includes(activeOrigin)
@@ -482,6 +498,10 @@ async function render() {
 document.getElementById('open-settings')!.addEventListener('click', () => {
   void chrome.runtime.openOptionsPage()
 })
+
+document
+  .getElementById('connection-status')!
+  .addEventListener('click', () => void handleConnectionClick())
 
 document.getElementById('origin-toggle')!.addEventListener('change', (event) => {
   void toggleOrigin((event.target as HTMLInputElement).checked)

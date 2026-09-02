@@ -47,6 +47,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
@@ -74,6 +75,16 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+#origin-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .header__mocking {
@@ -81,6 +92,34 @@ body {
   font-size: 11px;
   color: var(--text-dim);
   cursor: pointer;
+  min-width: 0;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header__status--action {
+  color: var(--amber);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.header__status--action::before {
+  display: none;
+}
+
+.header__status--action:hover {
+  color: var(--text);
+}
+
+.header__status--clickable {
+  cursor: pointer;
+}
+
+.header__status--clickable:hover {
+  color: var(--text);
 }
 
 
