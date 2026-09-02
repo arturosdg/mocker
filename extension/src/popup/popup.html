@@ -46,47 +46,50 @@
         <span class="network__count" id="network-count"></span>
       </button>
       <div class="network__body" id="network-body" hidden>
-        <div class="network__destination-row">
-          <label class="network__destination-label" for="network-destination"
-            >add to</label
-          >
-          <select
-            id="network-destination"
-            class="toolbar__environment"
-          ></select>
+        <div class="segmented">
+          <button class="segment segment--active" id="segment-requests">
+            Requests
+          </button>
+          <button class="segment" id="segment-websockets">WebSockets</button>
         </div>
-        <ul class="network__list" id="network-list"></ul>
-        <p class="network__error" id="network-error" hidden></p>
-      </div>
-    </section>
-    <section class="network" id="ws-section" hidden>
-      <button class="network__header" id="ws-toggle">
-        <span class="network__title" id="ws-title"></span>
-        <span class="network__count" id="ws-count"></span>
-      </button>
-      <div class="network__body" id="ws-body" hidden>
-        <ul class="network__list ws-sockets" id="ws-socket-list"></ul>
-        <div class="ws-form">
-          <input
-            type="text"
-            class="ws-form__input"
-            id="ws-url"
-            placeholder="socket url contains… (empty = all)"
-          />
-          <input
-            type="text"
-            class="ws-form__input"
-            id="ws-channel"
-            placeholder="channel (empty = raw frame)"
-          />
-          <textarea
-            class="ws-form__input ws-form__data"
-            id="ws-data"
-            placeholder='data — JSON or plain text, e.g. { "count": 2 }'
-          ></textarea>
-          <div class="ws-form__actions">
-            <span class="ws-form__result" id="ws-result"></span>
-            <button class="button-send button--primary" id="ws-send">Send</button>
+        <div id="requests-view">
+          <div class="network__destination-row">
+            <label class="network__destination-label" for="network-destination"
+              >add to</label
+            >
+            <select
+              id="network-destination"
+              class="toolbar__environment"
+            ></select>
+          </div>
+          <ul class="network__list" id="network-list"></ul>
+          <p class="network__error" id="network-error" hidden></p>
+        </div>
+        <div id="ws-view" hidden>
+          <ul class="network__list ws-saved" id="ws-saved-list"></ul>
+          <ul class="network__list ws-sockets" id="ws-socket-list"></ul>
+          <div class="ws-form">
+            <input
+              type="text"
+              class="ws-form__input"
+              id="ws-url"
+              placeholder="socket url contains… (empty = all)"
+            />
+            <input
+              type="text"
+              class="ws-form__input"
+              id="ws-channel"
+              placeholder="channel (empty = raw frame)"
+            />
+            <textarea
+              class="ws-form__input ws-form__data"
+              id="ws-data"
+              placeholder='data — JSON or plain text, e.g. { "count": 2 }'
+            ></textarea>
+            <div class="ws-form__actions">
+              <span class="ws-form__result" id="ws-result"></span>
+              <button class="button-send" id="ws-send">Send</button>
+            </div>
           </div>
         </div>
       </div>

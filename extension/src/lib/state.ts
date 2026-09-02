@@ -27,9 +27,17 @@ export interface ScenarioActivation {
   activatedAt: number
 }
 
+export interface WsMessage {
+  name: string
+  url?: string
+  channel?: string
+  data: unknown
+}
+
 export interface MockerState {
   connected: boolean
   disabledOrigins?: string[]
+  wsMessages?: WsMessage[]
   project?: Project
   scenarios: Scenario[]
   activation: Record<string, ScenarioActivation>

@@ -191,6 +191,11 @@ mocks:
     'name: PerMock\nmocks:\n  - method: GET\n    url: /api/m1/\n    status: 200\n    response: { v: m1 }\n  - method: GET\n    url: /api/m2/\n    status: 200\n    response: { v: m2 }\n',
   )
   await write(
+    mocks,
+    'websockets.yaml',
+    'messages:\n  - name: New task push\n    channel: tasks:e2e\n    data:\n      n: 1\n',
+  )
+  await write(
     scenarios,
     'arch.yaml',
     'name: Archivable\nmocks:\n  - method: GET\n    url: /api/arch/\n    status: 200\n    response: { v: arch }\n',
@@ -560,13 +565,29 @@ check(
 )
 await settings.locator('[data-scenario-id="permock"]').getByRole('button', { name: 'Cancel' }).click()
 
-// ───────────────────────── I. WebSockets: listar y emitir
+// ───────────────────────── I. WebSockets: listar, emitir y mensajes guardados
 await app.bringToFront()
 await popup.reload()
 await popup.waitForTimeout(700)
-check('sección websockets visible', await popup.locator('#ws-section').isVisible())
-await popup.locator('#ws-toggle').click()
+if (!(await popup.locator('#network-body').isVisible())) {
+  await popup.locator('#network-toggle').click()
+  await popup.waitForTimeout(200)
+}
+await popup.locator('#segment-websockets').click()
 await popup.waitForTimeout(400)
+check('vista websockets separada de requests', await popup.locator('#ws-view').isVisible() && !(await popup.locator('#requests-view').isVisible()))
+const savedRow = popup.locator('.ws-saved-row').first()
+check('mensaje guardado listado', (await savedRow.textContent()).includes('New task push'))
+await savedRow.locator('.ws-saved-row__send').click()
+await popup.waitForTimeout(400)
+const savedFrame = await app.evaluate(() =>
+  window.__wsMessages.at(-1) ? JSON.parse(window.__wsMessages.at(-1)) : null,
+)
+check(
+  'mensaje guardado entrega el sobre',
+  savedFrame?.push?.channel === 'tasks:e2e' && savedFrame?.push?.pub?.data?.n === 1,
+  JSON.stringify(savedFrame),
+)
 const socketRow = popup.locator('.ws-socket').first()
 check(
   'socket listado con su url',
@@ -582,7 +603,7 @@ await popup.locator('#ws-data').fill('{"count": 3}')
 await popup.locator('#ws-send').click()
 await popup.waitForTimeout(400)
 check(
-  'emisión reporta destino',
+  'emisión manual reporta destino',
   (await popup.locator('#ws-result').textContent()).includes('sent to 1'),
 )
 const centrifugoFrame = await app.evaluate(() =>
@@ -602,6 +623,25 @@ check(
   'frame crudo sin canal',
   await app.evaluate(() => window.__wsMessages.at(-1) === 'plain-frame'),
 )
+await popup.locator('#segment-requests').click()
+await popup.waitForTimeout(300)
+check('vuelta al segmento de requests', await popup.locator('#requests-view').isVisible())
+
+// ───────────────────────── I2. Settings: editor de mensajes WS
+await settings.bringToFront()
+await settings.locator('#tab-websockets').click()
+await settings.waitForTimeout(300)
+check('tab websockets con el mensaje', (await settings.locator('#ws-message-list .card').count()) === 1)
+check('guardar ws deshabilitado sin cambios', await settings.locator('#ws-save').isDisabled())
+await settings.locator('#ws-message-list .card__header input').first().fill('Renamed push')
+check('guardar ws habilitado al editar', !(await settings.locator('#ws-save').isDisabled()))
+await settings.locator('#ws-save').click()
+await settings.waitForTimeout(700)
+check(
+  'websockets.yaml persistido',
+  (await readOpfs(['websockets.yaml'])).includes('Renamed push'),
+)
+await settings.locator('#tab-scenarios').click()
 
 // ───────────────────────── J. Docs y panel de DevTools
 await settings.locator('#tab-docs').click()

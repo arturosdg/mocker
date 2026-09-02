@@ -1,6 +1,6 @@
 import { parse, stringify } from 'yaml'
 
-import type { Mock, MockerState, Project, Scenario } from './state'
+import type { Mock, MockerState, Project, Scenario, WsMessage } from './state'
 import { EMPTY_STATE } from './state'
 
 const DATABASE_NAME = 'mocker'
@@ -152,12 +152,16 @@ export async function reloadSnapshot(): Promise<WriteResult> {
   try {
     const project = parse(await readFileText(handle, 'project.yaml')) as Project
     const scenarios = sortScenarios(await readScenarios(handle), project)
+    const wsMessages = await readWsMessages(handle)
     const state = await getState()
     const changed =
-      JSON.stringify({ project: state.project, scenarios: state.scenarios }) !==
-      JSON.stringify({ project, scenarios })
+      JSON.stringify({
+        project: state.project,
+        scenarios: state.scenarios,
+        wsMessages: state.wsMessages ?? [],
+      }) !== JSON.stringify({ project, scenarios, wsMessages })
     if (changed || !state.connected) {
-      await patchState({ project, scenarios, connected: true })
+      await patchState({ project, scenarios, wsMessages, connected: true })
     }
     return { ok: true }
   } catch (error) {
@@ -187,6 +191,31 @@ async function readScenarios(
     scenarios.push({ id: entry.name.replace(/\.ya?ml$/, ''), ...parsed })
   }
   return scenarios
+}
+
+async function readWsMessages(
+  handle: FileSystemDirectoryHandle,
+): Promise<WsMessage[]> {
+  try {
+    const parsed = parse(await readFileText(handle, 'websockets.yaml')) as {
+      messages?: WsMessage[]
+    }
+    return parsed?.messages ?? []
+  } catch {
+    return []
+  }
+}
+
+export function updateWsMessages(messages: WsMessage[]): Promise<WriteResult> {
+  return performWrite(async (handle) => {
+    messages.forEach((message, index) => {
+      if (!message.name?.trim()) {
+        throw new Error(`Message ${index + 1}: name is required`)
+      }
+    })
+    await writeFile(handle, 'websockets.yaml', stringify({ messages }))
+    return 'websockets'
+  })
 }
 
 function sortScenarios(scenarios: Scenario[], project: Project): Scenario[] {

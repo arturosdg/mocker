@@ -485,6 +485,85 @@ body {
   padding: 0 6px;
 }
 
+.segmented {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 2px;
+}
+
+.segment {
+  flex: 1;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.segment--active {
+  background: var(--background);
+  color: var(--text);
+}
+
+.ws-saved {
+  margin-bottom: 8px;
+}
+
+.ws-saved-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.ws-saved-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ws-saved-row__channel {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.ws-saved-row__send {
+  flex-shrink: 0;
+  width: 24px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ws-saved-row__send:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
 .ws-sockets {
   margin-bottom: 8px;
 }
@@ -574,6 +653,7 @@ body {
   color: #17171c;
   padding: 6px 14px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .button-send:hover {
