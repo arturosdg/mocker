@@ -67,20 +67,65 @@ let environmentsExpanded = false
 let archivedExpanded = false
 const mockReaders = new WeakMap<Element, () => Mock>()
 
-async function moveScenario(scenarioId: string, delta: number) {
+function makeDraggableByHandle(
+  handle: HTMLElement,
+  item: HTMLElement,
+  onDrop: () => void,
+) {
+  handle.addEventListener('pointerdown', (event) => {
+    event.preventDefault()
+    const parent = item.parentElement
+    if (!parent) return
+    const startIndex = [...parent.children].indexOf(item)
+    item.classList.add('dragging')
+    document.body.classList.add('is-dragging')
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const siblings = [...parent.children].filter(
+        (child) => child !== item,
+      ) as HTMLElement[]
+      for (const sibling of siblings) {
+        const rect = sibling.getBoundingClientRect()
+        if (moveEvent.clientY < rect.top || moveEvent.clientY > rect.bottom) {
+          continue
+        }
+        const dropBefore = moveEvent.clientY < rect.top + rect.height / 2
+        parent.insertBefore(item, dropBefore ? sibling : sibling.nextSibling)
+        break
+      }
+    }
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      item.classList.remove('dragging')
+      document.body.classList.remove('is-dragging')
+      const endIndex = [...parent.children].indexOf(item)
+      if (endIndex !== startIndex) onDrop()
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  })
+}
+
+async function persistScenarioOrder() {
   const state = await getState()
   if (!state.project) return
-  const visibleIds = state.scenarios
+  const visibleIds = [
+    ...document.querySelectorAll<HTMLElement>(
+      '#scenario-list [data-scenario-id]',
+    ),
+  ].map((card) => card.dataset.scenarioId!)
+  const currentIds = state.scenarios
     .filter((scenario) => !scenario.archived)
     .map((scenario) => scenario.id)
+  if (JSON.stringify(visibleIds) === JSON.stringify(currentIds)) return
   const archivedIds = state.scenarios
     .filter((scenario) => scenario.archived)
     .map((scenario) => scenario.id)
-  const from = visibleIds.indexOf(scenarioId)
-  const to = from + delta
-  if (from === -1 || to < 0 || to >= visibleIds.length) return
-  ;[visibleIds[from], visibleIds[to]] = [visibleIds[to], visibleIds[from]]
-  await updateProject({ ...state.project, order: [...visibleIds, ...archivedIds] })
+  await updateProject({
+    ...state.project,
+    order: [...visibleIds, ...archivedIds],
+  })
 }
 
 async function setScenarioArchived(scenario: Scenario, archived: boolean) {
@@ -312,36 +357,19 @@ function buildMockEditor(
   const nameInput = buildTextInput(mock.name ?? '', 'Nombre (opcional)')
   nameInput.className = 'mock__name'
 
+  const dragHandle = document.createElement('span')
+  dragHandle.className = 'mock__drag'
+  dragHandle.textContent = '⠿'
+  dragHandle.title = 'Arrastra para reordenar (se aplica al guardar)'
+  makeDraggableByHandle(dragHandle, container, () => {
+    const parent = container.parentElement
+    if (!parent) return
+    renumberMocks(parent)
+    notifyStructuralEdit(parent)
+  })
+
   const headerActions = document.createElement('span')
   headerActions.className = 'mock__header-actions'
-
-  const moveUpButton = document.createElement('button')
-  moveUpButton.className = 'button button--small'
-  moveUpButton.textContent = '↑'
-  moveUpButton.title = 'Subir (se aplica al guardar)'
-  moveUpButton.addEventListener('click', () => {
-    const previous = container.previousElementSibling
-    const parent = container.parentElement
-    if (!previous || !parent) return
-    parent.insertBefore(container, previous)
-    renumberMocks(parent)
-    notifyStructuralEdit(parent)
-  })
-
-  const moveDownButton = document.createElement('button')
-  moveDownButton.className = 'button button--small'
-  moveDownButton.textContent = '↓'
-  moveDownButton.title = 'Bajar (se aplica al guardar)'
-  moveDownButton.addEventListener('click', () => {
-    const next = container.nextElementSibling
-    const parent = container.parentElement
-    if (!next || !parent) return
-    parent.insertBefore(next, container)
-    renumberMocks(parent)
-    notifyStructuralEdit(parent)
-  })
-
-  headerActions.append(moveUpButton, moveDownButton)
 
   if (saved) {
     headerActions.append(
@@ -373,7 +401,7 @@ function buildMockEditor(
 
   const header = document.createElement('div')
   header.className = 'mock__header'
-  header.append(title, nameInput, headerActions)
+  header.append(dragHandle, title, nameInput, headerActions)
 
   const methodSelect = buildMethodSelect(mock.method)
   const urlInput = buildTextInput(mock.url, '/api/… o {{variable}}/api/…')
@@ -702,34 +730,23 @@ function buildScenarioReadCard(
   if (scenario.archived) {
     top.append(idLabel)
   } else {
-    const controls = document.createElement('span')
-    controls.className = 'card__top-controls'
+    const dragHandle = document.createElement('span')
+    dragHandle.className = 'card__drag'
+    dragHandle.textContent = '⠿'
+    dragHandle.title = 'Arrastra para reordenar'
+    makeDraggableByHandle(dragHandle, card, () => void persistScenarioOrder())
 
-    const moveUpButton = document.createElement('button')
-    moveUpButton.className = 'button button--small'
-    moveUpButton.textContent = '↑'
-    moveUpButton.title = 'Subir'
-    moveUpButton.addEventListener('click', () => {
-      void moveScenario(scenario.id, -1)
-    })
+    const labelGroup = document.createElement('span')
+    labelGroup.className = 'card__top-controls'
+    labelGroup.append(dragHandle, idLabel)
 
-    const moveDownButton = document.createElement('button')
-    moveDownButton.className = 'button button--small'
-    moveDownButton.textContent = '↓'
-    moveDownButton.title = 'Bajar'
-    moveDownButton.addEventListener('click', () => {
-      void moveScenario(scenario.id, 1)
-    })
-
-    controls.append(
-      moveUpButton,
-      moveDownButton,
+    top.append(
+      labelGroup,
       buildToggle(
         state.activation[scenario.id]?.active ?? false,
         (checked) => void toggleScenario(scenario.id, checked),
       ),
     )
-    top.append(idLabel, controls)
   }
 
   const name = document.createElement('h3')

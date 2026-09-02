@@ -349,6 +349,25 @@ body {
   gap: 8px;
 }
 
+.card__drag,
+.mock__drag {
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.dragging {
+  opacity: 0.45;
+}
+
+body.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .archived {
   margin-top: 20px;
 }

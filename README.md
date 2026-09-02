@@ -130,9 +130,10 @@ toggles de activación operativos); **Editar** abre el formulario completo
 (nombre, descripción, mocks con nombre opcional,
 método/URL/status/delay/respuesta), con Cancelar para volver sin guardar,
 crear, duplicar, **archivar** (los escenarios archivados salen de las listas y
-dejan de interceptar; viven plegados en la sección Archivados), **reordenar**
-con ↑/↓ (escenarios en lectura, mocks en edición; el orden de escenarios se
-persiste en `project.yaml: order`) y eliminar. La tarjeta de proyecto también
+dejan de interceptar; viven plegados en la sección Archivados), **reordenar
+arrastrando** (las tarjetas de escenario en lectura; los mocks por su asa ⠿ en
+edición; el orden de escenarios se persiste en `project.yaml: order`) y
+eliminar. La tarjeta de proyecto también
 es plegable. Los toggles de activación (escenario y mock) aplican al instante,
 sin pasar por Guardar; el toggle global de Mocking y el interruptor por origen
 (dominio+puerto de la pestaña actual) viven en el popup. Renombrar = editar el
