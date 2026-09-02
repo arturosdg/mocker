@@ -5,3 +5,5 @@ dist/
 example/.mocks/scenarios/prueba-mocker.yaml
 extension/dist-firefox/
 *.zip
+
+example/.mocks/.runtime/
