@@ -1,6 +1,6 @@
 {
   "name": "mocker",
-  "description": "Usa mocker desde un agente: escenarios YAML en .mocks/ + verificación por .mocks/.runtime/requests.json",
+  "description": "Drive mocker from an agent: YAML scenarios in .mocks/ + verification via .mocks/.runtime/requests.json",
   "version": "0.1.0",
   "author": { "name": "arturosdg" },
   "homepage": "https://github.com/arturosdg/mocker"

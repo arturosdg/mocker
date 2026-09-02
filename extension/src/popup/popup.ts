@@ -136,7 +136,7 @@ function buildScenarioItem(
 
   const row = document.createElement('div')
   row.className = 'scenario__row'
-  row.title = 'Ver mocks'
+  row.title = 'Show mocks'
   row.addEventListener('click', () => {
     if (expandedScenarios.has(scenario.id)) {
       expandedScenarios.delete(scenario.id)
@@ -198,16 +198,16 @@ function renderConnection() {
   const status = document.getElementById('connection-status')!
   if (accessState === 'granted') {
     status.textContent = '✓'
-    status.title = 'Proyecto sincronizado'
+    status.title = 'Project synced'
     status.className = 'status-pill status-pill--ok'
   } else if (accessState === 'needs-permission') {
     status.textContent = '⚠'
     status.title =
-      'Chrome ha caducado el permiso de la carpeta — pulsa para reconectar'
+      'Chrome expired the folder permission — click to reconnect'
     status.className = 'status-pill status-pill--warn status-pill--clickable'
   } else {
     status.textContent = '⚠'
-    status.title = 'Sin proyecto — pulsa para importar la carpeta .mocks'
+    status.title = 'No project — click to import your .mocks folder'
     status.className = 'status-pill status-pill--error status-pill--clickable'
   }
 }
@@ -236,9 +236,9 @@ function renderOriginToggle(state: MockerState) {
   const host = activeOrigin.replace(/^https?:\/\//, '')
   const label = document.getElementById('origin-label')!
   label.textContent = host
-  label.title = `Mocking en ${activeOrigin}`
+  label.title = `Mocking on ${activeOrigin}`
   const toggle = document.getElementById('origin-toggle') as HTMLInputElement
-  toggle.title = `Mocking en ${host}`
+  toggle.title = `Mocking on ${host}`
   toggle.checked = !(state.disabledOrigins ?? []).includes(activeOrigin)
 }
 
@@ -294,8 +294,8 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
     emptyMessage.hidden = false
     emptyMessage.textContent =
       accessState === 'granted'
-        ? 'El proyecto no tiene escenarios en .mocks/scenarios/'
-        : 'Importa la carpeta .mocks de tu repo en Configurar escenarios'
+        ? 'The project has no scenarios in .mocks/scenarios/'
+        : "Import your repo's .mocks folder from Configure scenarios"
     return
   }
 
@@ -320,7 +320,7 @@ async function addRequestToScenario(
   const scenario = state.scenarios.find(
     (candidate) => candidate.id === destinationScenarioId,
   )
-  if (!scenario) return { ok: false, error: 'Elige un escenario destino' }
+  if (!scenario) return { ok: false, error: 'Choose a destination scenario' }
 
   let mockUrl = request.url
   try {
@@ -390,12 +390,12 @@ function buildCaptureRow(
   const addButton = document.createElement('button')
   addButton.className = 'capture-row__add'
   addButton.textContent = '+'
-  addButton.title = 'Añadir como mock al escenario destino'
+  addButton.title = 'Add as a mock to the destination scenario'
 
   const markAsAdded = () => {
     addButton.textContent = '→'
     addButton.classList.add('capture-row__add--added')
-    addButton.title = 'Añadido — ir a configurarlo'
+    addButton.title = 'Added — click to configure it'
   }
   if (addedRequests.has(requestKey(request))) markAsAdded()
 
@@ -444,7 +444,7 @@ function renderNetwork(state: MockerState, requests: CapturedRequest[]) {
   if (tabRequests.length === 0) return
 
   document.getElementById('network-title')!.textContent =
-    `${networkOpen ? '▾' : '▸'} Red · esta pestaña`
+    `${networkOpen ? '▾' : '▸'} Network · this tab`
   document.getElementById('network-count')!.textContent = String(
     tabRequests.length,
   )

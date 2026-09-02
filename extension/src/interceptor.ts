@@ -98,7 +98,7 @@ function mockBody(mock: ResolvedMock): string {
 }
 
 function logMocked(mock: ResolvedMock, method: string, url: string) {
-  const time = new Date().toLocaleTimeString('es-ES', { hour12: false })
+  const time = new Date().toLocaleTimeString('en-GB', { hour12: false })
   const statusStyle =
     mock.status >= 400
       ? 'color:#ff453a;font-weight:600'

@@ -164,7 +164,7 @@ function buildMockDragSummary(mock: Mock): HTMLElement {
   method.textContent = mock.method.toUpperCase()
   const url = document.createElement('span')
   url.className = 'drag-summary__url'
-  url.textContent = mock.url || '(sin URL)'
+  url.textContent = mock.url || '(no url)'
   const status = document.createElement('span')
   status.className =
     mock.status >= 400
@@ -204,7 +204,7 @@ async function setScenarioArchived(scenario: Scenario, archived: boolean) {
     mocks: scenario.mocks,
   })
   if (result.ok) {
-    showSnackbar(archived ? 'Escenario archivado' : 'Escenario desarchivado')
+    showSnackbar(archived ? 'Scenario archived' : 'Scenario unarchived')
   }
   return result
 }
@@ -230,10 +230,10 @@ function validateUrlVariables(
       .map(([name]) => name)
     if (missingIn.length === environments.length) {
       level = 'error'
-      messages.push(`{{${token}}} no existe en ningún entorno`)
+      messages.push(`{{${token}}} does not exist in any environment`)
     } else if (missingIn.length > 0) {
       if (level !== 'error') level = 'warn'
-      messages.push(`{{${token}}} falta en: ${missingIn.join(', ')}`)
+      messages.push(`{{${token}}} missing in: ${missingIn.join(', ')}`)
     }
   }
   return { level, messages }
@@ -252,7 +252,7 @@ function applyVariableValidation(
   input.classList.add(`input--var-${result.level}`)
   input.title =
     result.level === 'ok'
-      ? 'Variables resueltas en todos los entornos'
+      ? 'Variables resolved in every environment'
       : result.messages.join('\n')
 }
 
@@ -422,13 +422,13 @@ function buildMockEditor(
   title.className = 'mock__title'
   title.textContent = `Mock ${mockNumber}`
 
-  const nameInput = buildTextInput(mock.name ?? '', 'Nombre (opcional)')
+  const nameInput = buildTextInput(mock.name ?? '', 'Name (optional)')
   nameInput.className = 'mock__name'
 
   const dragHandle = document.createElement('span')
   dragHandle.className = 'mock__drag'
   dragHandle.textContent = '⠿'
-  dragHandle.title = 'Arrastra para reordenar (se aplica al guardar)'
+  dragHandle.title = 'Drag to reorder (applies on save)'
   makeDraggableByHandle(
     dragHandle,
     container,
@@ -457,10 +457,10 @@ function buildMockEditor(
 
   const removeButton = document.createElement('button')
   removeButton.className = 'button button--danger button--small'
-  removeButton.textContent = 'Quitar'
+  removeButton.textContent = 'Remove'
   removeButton.addEventListener('click', () => {
-    const label = nameInput.value.trim() || urlInput.value.trim() || 'este mock'
-    if (!confirm(`¿Quitar ${label} del escenario? Se aplica al guardar.`)) {
+    const label = nameInput.value.trim() || urlInput.value.trim() || 'this mock'
+    if (!confirm(`Remove ${label} from the scenario? It applies on save.`)) {
       return
     }
     const mocksContainer = container.parentElement
@@ -477,7 +477,7 @@ function buildMockEditor(
   header.append(dragHandle, title, nameInput, headerActions)
 
   const methodSelect = buildMethodSelect(mock.method)
-  const urlInput = buildTextInput(mock.url, '/api/… o {{variable}}/api/…')
+  const urlInput = buildTextInput(mock.url, '/api/… or {{variable}}/api/…')
   urlInput.addEventListener('input', () =>
     applyVariableValidation(urlInput, project),
   )
@@ -488,7 +488,7 @@ function buildMockEditor(
   const firstRow = document.createElement('div')
   firstRow.className = 'mock__row'
   firstRow.append(
-    buildField('Método', methodSelect, 'method'),
+    buildField('Method', methodSelect, 'method'),
     buildField('URL', urlInput),
     buildField('Status', statusInput, 'status'),
     buildField('Delay ms', delayInput, 'delay'),
@@ -496,13 +496,13 @@ function buildMockEditor(
 
   const responseInput = document.createElement('textarea')
   responseInput.value = formatResponse(mock.response)
-  responseInput.placeholder = '{ "campo": "valor" } — JSON o texto plano'
+  responseInput.placeholder = '{ "field": "value" } — JSON or plain text'
   responseInput.addEventListener('input', () => {
     markEdited()
     autoGrow(responseInput)
   })
 
-  container.append(header, firstRow, buildField('Respuesta', responseInput))
+  container.append(header, firstRow, buildField('Response', responseInput))
 
   mockReaders.set(container, () => {
     const delay = Number(delayInput.value)
@@ -531,11 +531,11 @@ function buildVariableRow(key: string, value: string): HTMLElement {
   row.className = 'environment__row'
 
   const keyInput = buildTextInput(key, 'variable')
-  const valueInput = buildTextInput(value, 'valor (vacío = solo pathname)')
+  const valueInput = buildTextInput(value, 'value (empty = pathname only)')
 
   const removeButton = document.createElement('button')
   removeButton.className = 'button button--danger button--small'
-  removeButton.textContent = 'Quitar'
+  removeButton.textContent = 'Remove'
   removeButton.addEventListener('click', () => {
     const parent = row.parentElement
     row.remove()
@@ -544,7 +544,7 @@ function buildVariableRow(key: string, value: string): HTMLElement {
 
   row.append(
     buildField('Variable', keyInput, 'variable'),
-    buildField('Valor', valueInput),
+    buildField('Value', valueInput),
     removeButton,
   )
   variableReaders.set(row, () => [keyInput.value.trim(), valueInput.value])
@@ -558,14 +558,14 @@ function buildEnvironmentEditor(
   const container = document.createElement('div')
   container.className = 'environment'
 
-  const nameInput = buildTextInput(name, 'nombre del entorno')
+  const nameInput = buildTextInput(name, 'environment name')
   nameInput.className = 'environment__name'
 
   const removeButton = document.createElement('button')
   removeButton.className = 'button button--danger button--small'
-  removeButton.textContent = 'Quitar entorno'
+  removeButton.textContent = 'Remove environment'
   removeButton.addEventListener('click', () => {
-    if (!confirm(`¿Quitar el entorno "${nameInput.value || 'sin nombre'}"? Se aplica al guardar.`)) {
+    if (!confirm(`Remove the environment "${nameInput.value || 'unnamed'}"? It applies on save.`)) {
       return
     }
     const parent = container.parentElement
@@ -587,7 +587,7 @@ function buildEnvironmentEditor(
 
   const addVariableButton = document.createElement('button')
   addVariableButton.className = 'button button--small'
-  addVariableButton.textContent = 'Añadir variable'
+  addVariableButton.textContent = 'Add variable'
   addVariableButton.addEventListener('click', () => {
     rowsContainer.append(buildVariableRow('', ''))
     notifyStructuralEdit(rowsContainer)
@@ -618,7 +618,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   const body = document.createElement('div')
 
   const syncProjectVisibility = () => {
-    projectToggle.textContent = `${projectExpanded ? '▾' : '▸'} Proyecto — ${project.name} (project.yaml)`
+    projectToggle.textContent = `${projectExpanded ? '▾' : '▸'} Project — ${project.name} (project.yaml)`
     body.hidden = !projectExpanded
   }
   projectToggle.addEventListener('click', () => {
@@ -628,11 +628,11 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
 
   card.append(projectToggle, body)
 
-  const nameInput = buildTextInput(project.name, 'Nombre del proyecto')
+  const nameInput = buildTextInput(project.name, 'Project name')
 
   const header = document.createElement('div')
   header.className = 'card__header'
-  header.append(buildField('Nombre', nameInput))
+  header.append(buildField('Name', nameInput))
 
   const environmentCount = Object.keys(project.environments ?? {}).length
 
@@ -649,7 +649,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
 
   const addEnvironmentButton = document.createElement('button')
   addEnvironmentButton.className = 'button'
-  addEnvironmentButton.textContent = 'Añadir entorno'
+  addEnvironmentButton.textContent = 'Add environment'
   addEnvironmentButton.addEventListener('click', () => {
     if (!environmentsExpanded) {
       environmentsExpanded = true
@@ -659,7 +659,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   })
 
   const syncEnvironmentsVisibility = () => {
-    environmentsTitle.textContent = `${environmentsExpanded ? '▾' : '▸'} Entornos (${environmentCount})`
+    environmentsTitle.textContent = `${environmentsExpanded ? '▾' : '▸'} Environments (${environmentCount})`
     environmentsContainer.hidden = !environmentsExpanded
     addEnvironmentButton.hidden = !environmentsExpanded
   }
@@ -678,12 +678,12 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     const activeSelect = document.createElement('select')
     activeSelect.className = 'network__destination runtime-control'
     activeSelect.title =
-      'Entorno activo: resuelve las {{variables}} de las URLs de los mocks'
+      'Active environment: resolves the {{variables}} in mock urls'
     activeSelect.replaceChildren(
       ...environmentNames.map((environmentName) => {
         const option = document.createElement('option')
         option.value = environmentName
-        option.textContent = `entorno: ${environmentName}`
+        option.textContent = `env: ${environmentName}`
         return option
       }),
     )
@@ -701,7 +701,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
 
   const saveButton = document.createElement('button')
   saveButton.className = 'button button--primary'
-  saveButton.textContent = 'Guardar'
+  saveButton.textContent = 'Save'
   saveButton.disabled = true
   saveButton.addEventListener('click', async () => {
     const environments = Object.fromEntries(
@@ -716,13 +716,13 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
       environments,
     })
     if (!result.ok) {
-      errorMessage.textContent = result.error ?? 'Error desconocido'
+      errorMessage.textContent = result.error ?? 'Unknown error'
       errorMessage.hidden = false
       return
     }
     hasUnsavedEdits = false
     await render()
-    showSnackbar('Proyecto guardado')
+    showSnackbar('Project saved')
   })
 
   const footer = document.createElement('div')
@@ -806,7 +806,7 @@ function buildScenarioReadCard(
     const dragHandle = document.createElement('span')
     dragHandle.className = 'card__drag'
     dragHandle.textContent = '⠿'
-    dragHandle.title = 'Arrastra para reordenar'
+    dragHandle.title = 'Drag to reorder'
     makeDraggableByHandle(
       dragHandle,
       card,
@@ -889,7 +889,7 @@ function buildScenarioReadCard(
   if (scenario.archived) {
     const unarchiveButton = document.createElement('button')
     unarchiveButton.className = 'button'
-    unarchiveButton.textContent = 'Desarchivar'
+    unarchiveButton.textContent = 'Unarchive'
     unarchiveButton.addEventListener('click', () => {
       void setScenarioArchived(scenario, false)
     })
@@ -897,14 +897,14 @@ function buildScenarioReadCard(
   } else {
     const archiveButton = document.createElement('button')
     archiveButton.className = 'button'
-    archiveButton.textContent = 'Archivar'
+    archiveButton.textContent = 'Archive'
     archiveButton.addEventListener('click', () => {
       void setScenarioArchived(scenario, true)
     })
 
     const editButton = document.createElement('button')
     editButton.className = 'button'
-    editButton.textContent = 'Editar'
+    editButton.textContent = 'Edit'
     editButton.addEventListener('click', () => {
       editingScenarios.add(scenario.id)
       void rebuildScenarioCard(scenario.id)
@@ -942,17 +942,17 @@ function buildScenarioEditCard(
     card.append(top)
   }
 
-  const nameInput = buildTextInput(scenario?.name ?? '', 'Nombre del escenario')
+  const nameInput = buildTextInput(scenario?.name ?? '', 'Scenario name')
   const descriptionInput = buildTextInput(
     scenario?.description ?? '',
-    'Descripción (opcional)',
+    'Description (optional)',
   )
 
   const header = document.createElement('div')
   header.className = 'card__header'
   header.append(
-    buildField('Nombre', nameInput),
-    buildField('Descripción', descriptionInput),
+    buildField('Name', nameInput),
+    buildField('Description', descriptionInput),
   )
 
   const mocksTitle = document.createElement('div')
@@ -980,7 +980,7 @@ function buildScenarioEditCard(
 
   const addMockButton = document.createElement('button')
   addMockButton.className = 'button'
-  addMockButton.textContent = 'Añadir mock'
+  addMockButton.textContent = 'Add mock'
   addMockButton.addEventListener('click', () => {
     mocksContainer.append(
       buildMockEditor(
@@ -994,7 +994,7 @@ function buildScenarioEditCard(
 
   const saveButton = document.createElement('button')
   saveButton.className = 'button button--primary'
-  saveButton.textContent = 'Guardar'
+  saveButton.textContent = 'Save'
   saveButton.disabled = true
   saveButton.addEventListener('click', async () => {
     const payload = {
@@ -1010,19 +1010,19 @@ function buildScenarioEditCard(
       ? await updateScenarioFile(scenario.id, payload)
       : await createScenarioFile(payload)
     if (!result.ok) {
-      errorMessage.textContent = result.error ?? 'Error desconocido'
+      errorMessage.textContent = result.error ?? 'Unknown error'
       errorMessage.hidden = false
       return
     }
     if (scenario) editingScenarios.delete(scenario.id)
     hasUnsavedEdits = false
     await render()
-    showSnackbar(scenario ? 'Escenario guardado' : 'Escenario creado')
+    showSnackbar(scenario ? 'Scenario saved' : 'Scenario created')
   })
 
   const cancelButton = document.createElement('button')
   cancelButton.className = 'button'
-  cancelButton.textContent = 'Cancelar'
+  cancelButton.textContent = 'Cancel'
   cancelButton.addEventListener('click', () => {
     if (scenario) {
       editingScenarios.delete(scenario.id)
@@ -1038,7 +1038,7 @@ function buildScenarioEditCard(
   if (scenario) {
     const duplicateButton = document.createElement('button')
     duplicateButton.className = 'button'
-    duplicateButton.textContent = 'Duplicar'
+    duplicateButton.textContent = 'Duplicate'
     duplicateButton.addEventListener('click', async () => {
       const result = await createScenarioFile({
         name: `${scenario.name} (copia)`,
@@ -1046,25 +1046,25 @@ function buildScenarioEditCard(
         mocks: scenario.mocks,
       })
       if (!result.ok) {
-        errorMessage.textContent = result.error ?? 'Error desconocido'
+        errorMessage.textContent = result.error ?? 'Unknown error'
         errorMessage.hidden = false
         return
       }
-      showSnackbar('Escenario duplicado')
+      showSnackbar('Scenario duplicated')
     })
 
     const deleteButton = document.createElement('button')
     deleteButton.className = 'button button--danger'
-    deleteButton.textContent = 'Eliminar'
+    deleteButton.textContent = 'Delete'
     deleteButton.addEventListener('click', async () => {
-      if (!confirm(`¿Eliminar el escenario "${scenario.name}"?`)) return
+      if (!confirm(`Delete the scenario "${scenario.name}"?`)) return
       const result = await deleteScenarioFile(scenario.id)
       if (!result.ok) {
-        errorMessage.textContent = result.error ?? 'Error desconocido'
+        errorMessage.textContent = result.error ?? 'Unknown error'
         errorMessage.hidden = false
         return
       }
-      showSnackbar('Escenario eliminado')
+      showSnackbar('Scenario deleted')
     })
 
     footerActions.append(duplicateButton, deleteButton)
@@ -1108,16 +1108,16 @@ function renderConnection() {
   const status = document.getElementById('connection-status')!
   if (accessState === 'granted') {
     status.textContent = '✓'
-    status.title = 'Proyecto sincronizado'
+    status.title = 'Project synced'
     status.className = 'status-pill status-pill--ok'
   } else if (accessState === 'needs-permission') {
     status.textContent = '⚠'
     status.title =
-      'Chrome ha caducado el permiso de la carpeta — pulsa para reconectar'
+      'Chrome expired the folder permission — click to reconnect'
     status.className = 'status-pill status-pill--warn status-pill--clickable'
   } else {
     status.textContent = '⚠'
-    status.title = 'Sin proyecto — pulsa para importar la carpeta .mocks'
+    status.title = 'No project — click to import your .mocks folder'
     status.className = 'status-pill status-pill--error status-pill--clickable'
   }
 }
@@ -1134,7 +1134,7 @@ async function importProject() {
 async function reconnectProject() {
   const granted = await requestAccess()
   if (!granted) {
-    renderAccessBanner('Chrome ha denegado el acceso a la carpeta')
+    renderAccessBanner('Chrome denied access to the folder')
     return
   }
   await reloadSnapshot()
@@ -1157,14 +1157,14 @@ function renderAccessBanner(errorMessage?: string) {
   if (accessState === 'needs-permission') {
     text.textContent =
       errorMessage ??
-      'Chrome ha caducado el permiso de la carpeta del proyecto (pasa en cada sesión nueva del navegador).'
-    action.textContent = 'Reconectar carpeta'
+      'Chrome expired the project folder permission (this happens on every new browser session).'
+    action.textContent = 'Reconnect folder'
     action.onclick = () => void reconnectProject()
   } else {
     text.textContent =
       errorMessage ??
-      'Ningún proyecto importado. Elige la carpeta .mocks de tu repo (o el repo que la contiene).'
-    action.textContent = 'Importar proyecto'
+      "No project imported. Choose your repo's .mocks folder (or the repo containing it)."
+    action.textContent = 'Import project'
     action.onclick = () => void importProject()
   }
 }
@@ -1202,7 +1202,7 @@ function renderValidationBanner(state: MockerState) {
 
   const title = document.createElement('div')
   title.className = 'banner__title'
-  title.textContent = `Problemas detectados en las URLs (${issues.length}) — pulsa para revisar:`
+  title.textContent = `URL problems detected (${issues.length}) — click to review:`
 
   banner.replaceChildren(
     title,
@@ -1255,8 +1255,8 @@ async function render() {
   emptyMessage.hidden = visibleScenarios.length > 0
   emptyMessage.textContent =
     accessState === 'granted'
-      ? 'No hay escenarios. Crea el primero con "Nuevo escenario".'
-      : 'Importa la carpeta .mocks de tu repo para empezar.'
+      ? 'No scenarios yet. Create the first one with "New scenario".'
+      : "Import your repo's .mocks folder to get started."
 
   list.replaceChildren(
     ...visibleScenarios.map((scenario) => buildScenarioCard(state, scenario)),
@@ -1325,7 +1325,7 @@ document.getElementById('connection-status')!.addEventListener('click', () => {
 function syncArchivedVisibility() {
   const archivedList = document.getElementById('archived-list')!
   const archivedToggle = document.getElementById('archived-toggle')!
-  archivedToggle.textContent = `${archivedExpanded ? '▾' : '▸'} Archivados (${archivedList.children.length})`
+  archivedToggle.textContent = `${archivedExpanded ? '▾' : '▸'} Archived (${archivedList.children.length})`
   archivedList.hidden = !archivedExpanded
 }
 

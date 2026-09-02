@@ -98,7 +98,7 @@ export async function pickProjectDirectory(): Promise<WriteResult> {
       mode: 'readwrite',
     })
   } catch {
-    return { ok: false, error: 'Selección cancelada' }
+    return { ok: false, error: 'Selection cancelled' }
   }
 
   const mocksDirectory = await resolveMocksDirectory(picked)
@@ -106,7 +106,7 @@ export async function pickProjectDirectory(): Promise<WriteResult> {
     return {
       ok: false,
       error:
-        'La carpeta elegida no contiene project.yaml ni una subcarpeta .mocks/ con él',
+        'The chosen folder has no project.yaml and no .mocks/ subfolder containing one',
     }
   }
   await saveDirectoryHandle(mocksDirectory)
@@ -141,12 +141,12 @@ export async function reloadSnapshot(): Promise<WriteResult> {
   const handle = await loadDirectoryHandle().catch(() => undefined)
   if (!handle) {
     await markDisconnected()
-    return { ok: false, error: 'No hay proyecto importado' }
+    return { ok: false, error: 'No project imported' }
   }
   const permission = await handle.queryPermission({ mode: 'readwrite' })
   if (permission !== 'granted') {
     await markDisconnected()
-    return { ok: false, error: 'Sin permiso sobre la carpeta del proyecto' }
+    return { ok: false, error: 'No permission over the project folder' }
   }
 
   try {
@@ -164,7 +164,7 @@ export async function reloadSnapshot(): Promise<WriteResult> {
     await markDisconnected()
     return {
       ok: false,
-      error: `No se pudo leer el proyecto: ${error instanceof Error ? error.message : error}`,
+      error: `Could not read the project: ${error instanceof Error ? error.message : error}`,
     }
   }
 }
@@ -203,10 +203,10 @@ function sortScenarios(scenarios: Scenario[], project: Project): Scenario[] {
 
 async function requireGrantedDirectory(): Promise<FileSystemDirectoryHandle> {
   const handle = await loadDirectoryHandle().catch(() => undefined)
-  if (!handle) throw new Error('No hay proyecto importado')
+  if (!handle) throw new Error('No project imported')
   const permission = await handle.queryPermission({ mode: 'readwrite' })
   if (permission !== 'granted') {
-    throw new Error('Sin permiso sobre la carpeta — reconéctala en Configuración')
+    throw new Error('No permission over the folder — reconnect it in Settings')
   }
   return handle
 }
@@ -223,13 +223,13 @@ async function writeFile(
 }
 
 function validateScenario(payload: ScenarioPayload): ScenarioPayload {
-  if (!payload.name?.trim()) throw new Error('El escenario necesita un nombre')
-  if (!Array.isArray(payload.mocks)) throw new Error('Mocks inválidos')
+  if (!payload.name?.trim()) throw new Error('The scenario needs a name')
+  if (!Array.isArray(payload.mocks)) throw new Error('Invalid mocks')
   payload.mocks.forEach((mock, index) => {
-    if (!mock.method?.trim()) throw new Error(`Mock ${index + 1}: falta el método`)
-    if (!mock.url?.trim()) throw new Error(`Mock ${index + 1}: falta la URL`)
+    if (!mock.method?.trim()) throw new Error(`Mock ${index + 1}: missing method`)
+    if (!mock.url?.trim()) throw new Error(`Mock ${index + 1}: missing url`)
     if (!Number.isInteger(mock.status)) {
-      throw new Error(`Mock ${index + 1}: falta el status`)
+      throw new Error(`Mock ${index + 1}: missing status`)
     }
   })
   return payload
@@ -251,7 +251,7 @@ function slugify(name: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return slug || 'escenario'
+  return slug || 'scenario'
 }
 
 async function uniqueScenarioId(
@@ -351,7 +351,7 @@ export async function writeRuntimeRequestsLog(requests: unknown[]) {
 
 export function updateProject(project: Project): Promise<WriteResult> {
   return performWrite(async (handle) => {
-    if (!project.name?.trim()) throw new Error('El proyecto necesita un nombre')
+    if (!project.name?.trim()) throw new Error('The project needs a name')
     const content = stringify({
       name: project.name.trim(),
       ...(project.order && project.order.length > 0
