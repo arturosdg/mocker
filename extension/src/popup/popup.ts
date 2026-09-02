@@ -197,19 +197,18 @@ function buildScenarioItem(
 function renderConnection() {
   const status = document.getElementById('connection-status')!
   if (accessState === 'granted') {
-    status.textContent = ''
-    status.title = 'Proyecto conectado'
-    status.className = 'header__status header__status--connected'
+    status.textContent = '✓'
+    status.title = 'Proyecto sincronizado'
+    status.className = 'status-pill status-pill--ok'
   } else if (accessState === 'needs-permission') {
-    status.textContent = '↻'
+    status.textContent = '⚠'
     status.title =
       'Chrome ha caducado el permiso de la carpeta — pulsa para reconectar'
-    status.className = 'header__status header__status--action'
+    status.className = 'status-pill status-pill--warn status-pill--clickable'
   } else {
-    status.textContent = 'sin proyecto'
-    status.title = 'Pulsa para importar la carpeta .mocks de tu repo'
-    status.className =
-      'header__status header__status--disconnected header__status--clickable'
+    status.textContent = '⚠'
+    status.title = 'Sin proyecto — pulsa para importar la carpeta .mocks'
+    status.className = 'status-pill status-pill--error status-pill--clickable'
   }
 }
 
