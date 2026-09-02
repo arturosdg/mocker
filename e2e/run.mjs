@@ -62,6 +62,7 @@ const context = await chromium.launchPersistentContext(
       '--headless=new',
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
+      ...(process.env.CI ? ['--no-sandbox'] : []),
     ],
   },
 )

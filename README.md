@@ -174,11 +174,27 @@ reorder, docs and the panel. Set `MOCKER_CHROME` to point at a specific
 binary; by default it uses the Playwright-cache Chromium or the system
 Chrome.
 
+## Releases
+
+Versioning is automated with [release-please](https://github.com/googleapis/release-please):
+conventional commits on `main` feed a release PR; merging it tags a version,
+publishes a GitHub Release and attaches two zips built by CI —
+`mocker-chrome-vX.Y.Z.zip` and `mocker-firefox-vX.Y.Z.zip`. CI also runs
+typecheck, both builds and the e2e battery on every PR.
+
+**Firefox caveat**: the Firefox build ships an MV3 event-page manifest
+(`background.scripts`, gecko id, FF 128+ for MAIN-world content scripts) and
+the interceptor/popup work, but Firefox does not implement the File System
+Access API, so importing a project is not possible there yet — the build is
+experimental until an alternative import path lands.
+
 ## Roadmap
 
-- [ ] **Automated extension releases**: CI builds `extension/dist`, runs the
-      e2e battery and publishes a versioned zip on tag (GitHub Releases);
-      later, Chrome Web Store upload via API.
+- [x] Automated extension releases (release-please + CI zips for Chrome and
+      Firefox).
+- [ ] Firefox project import (no File System Access API there — needs an
+      alternative such as one-shot directory upload).
+- [ ] Chrome Web Store upload from CI.
 - [ ] Stable per-mock ids: mock activation is tracked by index today, so
       toggled-off mocks can shift when a scenario is reordered.
 - [ ] Query-string matching (deliberately ignored today).

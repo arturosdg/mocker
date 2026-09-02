@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:firefox": "node build.mjs firefox"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",
