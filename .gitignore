@@ -3,3 +3,5 @@ dist/
 *.log
 .DS_Store
 example/.mocks/scenarios/prueba-mocker.yaml
+extension/dist-firefox/
+*.zip

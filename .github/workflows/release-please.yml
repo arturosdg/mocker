@@ -1,0 +1,46 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build-and-upload:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build -w extension
+      - run: npm run build:firefox -w extension
+      - name: Package zips
+        run: |
+          (cd extension/dist && zip -qr "../../mocker-chrome-${{ needs.release-please.outputs.tag_name }}.zip" .)
+          (cd extension/dist-firefox && zip -qr "../../mocker-firefox-${{ needs.release-please.outputs.tag_name }}.zip" .)
+      - name: Upload release assets
+        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" mocker-chrome-*.zip mocker-firefox-*.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
