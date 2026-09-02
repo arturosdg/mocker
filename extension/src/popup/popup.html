@@ -23,6 +23,15 @@
     </header>
     <div class="toolbar">
       <span class="toolbar__project" id="project-name"></span>
+      <span class="toolbar__environment-group" id="origin-group" hidden>
+        <label class="toolbar__environment-label" id="origin-label" for="origin-toggle"></label>
+        <input
+          type="checkbox"
+          class="toggle toggle--small"
+          id="origin-toggle"
+          title="Mocking en este origen (dominio+puerto)"
+        />
+      </span>
       <span class="toolbar__environment-group" id="environment-group" hidden>
         <label class="toolbar__environment-label" for="environment-select"
           >entorno</label

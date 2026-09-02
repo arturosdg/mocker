@@ -16,13 +16,6 @@
           Importar proyecto
         </button>
         <span class="header__status" id="connection-status"></span>
-        <label class="header__mocking" for="global-toggle">Mocking</label>
-        <input
-          type="checkbox"
-          class="toggle"
-          id="global-toggle"
-          title="Enciende o apaga mocker por completo"
-        />
       </span>
     </header>
     <nav class="tabs">
@@ -49,6 +42,13 @@
       </div>
       <div class="scenario-cards" id="scenario-list"></div>
       <p class="empty" id="empty-message" hidden></p>
+      <div class="archived" id="archived-section" hidden>
+        <button
+          class="card__mocks-title card__mocks-title--toggle"
+          id="archived-toggle"
+        ></button>
+        <div class="scenario-cards" id="archived-list"></div>
+      </div>
       </div>
       <div class="docs" id="view-docs" hidden>
         <h2>El formato de <code>.mocks/</code></h2>
@@ -67,6 +67,9 @@ tu-app/
         <h3>project.yaml</h3>
         <pre>
 name: mi-app
+order:                 # opcional: orden de los escenarios en las listas
+  - lista-vacia
+  - error-al-guardar
 environments:          # opcional
   local:
     api: ''            # vacío = la URL queda como pathname
@@ -83,6 +86,7 @@ environments:          # opcional
         <pre>
 name: Error al guardar          # obligatorio
 description: El POST falla      # opcional
+archived: true                  # opcional: lo oculta y desactiva
 mocks:
   - name: Guardado roto         # opcional, para reconocerlo en las listas
     method: POST                # GET / POST / PUT / PATCH / DELETE / HEAD
@@ -126,9 +130,20 @@ mocks:
         <h3>Qué NO va en los ficheros</h3>
         <p>
           La activación (qué escenarios y mocks están encendidos, el toggle
-          global y el entorno activo) es estado del navegador: activar cosas
-          no ensucia tu <code>git status</code>. Si dos escenarios activos
-          mockean la misma URL, gana el último activado.
+          global, los orígenes desactivados y el entorno activo) es estado del
+          navegador: activar cosas no ensucia tu <code>git status</code>. Si
+          dos escenarios activos mockean la misma URL, gana el último
+          activado.
+        </p>
+
+        <h3>Para agentes: .runtime/requests.json</h3>
+        <p>
+          Con el proyecto conectado, mocker vuelca las últimas requests
+          capturadas (método, URL, status, body y si las sirvió un mock) a
+          <code>.mocks/.runtime/requests.json</code>. Un agente puede editar
+          los YAML directamente y leer ese fichero para verificar qué matcheó
+          — sin abrir el navegador. Añade
+          <code>.mocks/.runtime/</code> a tu <code>.gitignore</code>.
         </p>
       </div>
     </main>

@@ -1,4 +1,8 @@
-import { getAccessState, reloadSnapshot } from './lib/filesystem'
+import {
+  getAccessState,
+  reloadSnapshot,
+  writeRuntimeRequestsLog,
+} from './lib/filesystem'
 
 async function syncFromDisk() {
   if ((await getAccessState()) === 'granted') {
@@ -27,9 +31,9 @@ function appendCapturedRequest(
     const { requests } = await chrome.storage.session.get('requests')
     const list = (requests as object[] | undefined) ?? []
     list.unshift({ ...request, origin, at: Date.now(), tabId })
-    await chrome.storage.session.set({
-      requests: list.slice(0, MAX_CAPTURED_REQUESTS),
-    })
+    const capped = list.slice(0, MAX_CAPTURED_REQUESTS)
+    await chrome.storage.session.set({ requests: capped })
+    await writeRuntimeRequestsLog(capped)
   })
 }
 

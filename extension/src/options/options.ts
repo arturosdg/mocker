@@ -64,7 +64,37 @@ function applyPendingFocus() {
   pendingFocus = null
 }
 let environmentsExpanded = false
+let archivedExpanded = false
 const mockReaders = new WeakMap<Element, () => Mock>()
+
+async function moveScenario(scenarioId: string, delta: number) {
+  const state = await getState()
+  if (!state.project) return
+  const visibleIds = state.scenarios
+    .filter((scenario) => !scenario.archived)
+    .map((scenario) => scenario.id)
+  const archivedIds = state.scenarios
+    .filter((scenario) => scenario.archived)
+    .map((scenario) => scenario.id)
+  const from = visibleIds.indexOf(scenarioId)
+  const to = from + delta
+  if (from === -1 || to < 0 || to >= visibleIds.length) return
+  ;[visibleIds[from], visibleIds[to]] = [visibleIds[to], visibleIds[from]]
+  await updateProject({ ...state.project, order: [...visibleIds, ...archivedIds] })
+}
+
+async function setScenarioArchived(scenario: Scenario, archived: boolean) {
+  const result = await updateScenarioFile(scenario.id, {
+    name: scenario.name,
+    ...(scenario.description ? { description: scenario.description } : {}),
+    ...(archived ? { archived: true } : {}),
+    mocks: scenario.mocks,
+  })
+  if (result.ok) {
+    showSnackbar(archived ? 'Escenario archivado' : 'Escenario desarchivado')
+  }
+  return result
+}
 
 interface VariableValidation {
   level: 'ok' | 'warn' | 'error'
@@ -284,6 +314,34 @@ function buildMockEditor(
 
   const headerActions = document.createElement('span')
   headerActions.className = 'mock__header-actions'
+
+  const moveUpButton = document.createElement('button')
+  moveUpButton.className = 'button button--small'
+  moveUpButton.textContent = '↑'
+  moveUpButton.title = 'Subir (se aplica al guardar)'
+  moveUpButton.addEventListener('click', () => {
+    const previous = container.previousElementSibling
+    const parent = container.parentElement
+    if (!previous || !parent) return
+    parent.insertBefore(container, previous)
+    renumberMocks(parent)
+    notifyStructuralEdit(parent)
+  })
+
+  const moveDownButton = document.createElement('button')
+  moveDownButton.className = 'button button--small'
+  moveDownButton.textContent = '↓'
+  moveDownButton.title = 'Bajar (se aplica al guardar)'
+  moveDownButton.addEventListener('click', () => {
+    const next = container.nextElementSibling
+    const parent = container.parentElement
+    if (!next || !parent) return
+    parent.insertBefore(next, container)
+    renumberMocks(parent)
+    notifyStructuralEdit(parent)
+  })
+
+  headerActions.append(moveUpButton, moveDownButton)
 
   if (saved) {
     headerActions.append(
@@ -553,6 +611,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     )
     const result = await updateProject({
       name: nameInput.value.trim(),
+      ...(project.order?.length ? { order: project.order } : {}),
       environments,
     })
     if (!result.ok) {
@@ -639,13 +698,39 @@ function buildScenarioReadCard(
 
   const top = document.createElement('div')
   top.className = 'card__top'
-  top.append(
-    idLabel,
-    buildToggle(
-      state.activation[scenario.id]?.active ?? false,
-      (checked) => void toggleScenario(scenario.id, checked),
-    ),
-  )
+
+  if (scenario.archived) {
+    top.append(idLabel)
+  } else {
+    const controls = document.createElement('span')
+    controls.className = 'card__top-controls'
+
+    const moveUpButton = document.createElement('button')
+    moveUpButton.className = 'button button--small'
+    moveUpButton.textContent = '↑'
+    moveUpButton.title = 'Subir'
+    moveUpButton.addEventListener('click', () => {
+      void moveScenario(scenario.id, -1)
+    })
+
+    const moveDownButton = document.createElement('button')
+    moveDownButton.className = 'button button--small'
+    moveDownButton.textContent = '↓'
+    moveDownButton.title = 'Bajar'
+    moveDownButton.addEventListener('click', () => {
+      void moveScenario(scenario.id, 1)
+    })
+
+    controls.append(
+      moveUpButton,
+      moveDownButton,
+      buildToggle(
+        state.activation[scenario.id]?.active ?? false,
+        (checked) => void toggleScenario(scenario.id, checked),
+      ),
+    )
+    top.append(idLabel, controls)
+  }
 
   const name = document.createElement('h3')
   name.className = 'card__name'
@@ -688,33 +773,50 @@ function buildScenarioReadCard(
       name.textContent = mock.name ?? ''
       name.hidden = !mock.name
 
-      row.append(
-        method,
-        url,
-        name,
-        status,
-        buildToggle(
-          isMockActive(state, scenario.id, mockIndex),
-          (checked) => void toggleMock(scenario.id, mockIndex, checked),
-          'small',
-        ),
-      )
+      row.append(method, url, name, status)
+      if (!scenario.archived) {
+        row.append(
+          buildToggle(
+            isMockActive(state, scenario.id, mockIndex),
+            (checked) => void toggleMock(scenario.id, mockIndex, checked),
+            'small',
+          ),
+        )
+      }
       return row
     }),
   )
   card.append(mocksList)
 
-  const editButton = document.createElement('button')
-  editButton.className = 'button'
-  editButton.textContent = 'Editar'
-  editButton.addEventListener('click', () => {
-    editingScenarios.add(scenario.id)
-    void rebuildScenarioCard(scenario.id)
-  })
-
   const footer = document.createElement('div')
   footer.className = 'card__footer card__footer--read'
-  footer.append(editButton)
+
+  if (scenario.archived) {
+    const unarchiveButton = document.createElement('button')
+    unarchiveButton.className = 'button'
+    unarchiveButton.textContent = 'Desarchivar'
+    unarchiveButton.addEventListener('click', () => {
+      void setScenarioArchived(scenario, false)
+    })
+    footer.append(unarchiveButton)
+  } else {
+    const archiveButton = document.createElement('button')
+    archiveButton.className = 'button'
+    archiveButton.textContent = 'Archivar'
+    archiveButton.addEventListener('click', () => {
+      void setScenarioArchived(scenario, true)
+    })
+
+    const editButton = document.createElement('button')
+    editButton.className = 'button'
+    editButton.textContent = 'Editar'
+    editButton.addEventListener('click', () => {
+      editingScenarios.add(scenario.id)
+      void rebuildScenarioCard(scenario.id)
+    })
+    footer.append(archiveButton, editButton)
+  }
+
   card.append(footer)
 
   return card
@@ -1032,18 +1134,12 @@ function renderValidationBanner(state: MockerState) {
   )
 }
 
-function renderGlobalToggle(state: MockerState) {
-  const toggle = document.getElementById('global-toggle') as HTMLInputElement
-  toggle.checked = state.enabled !== false
-}
-
 async function render() {
   const [state, access] = await Promise.all([getState(), getAccessState()])
   accessState = access
   renderConnection()
   renderAccessBanner()
   renderValidationBanner(state)
-  renderGlobalToggle(state)
 
   const projectContainer = document.getElementById('project-container')!
   const projectCard = buildProjectCard(state)
@@ -1052,17 +1148,34 @@ async function render() {
     .querySelectorAll('textarea')
     .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
 
+  const visibleScenarios = state.scenarios.filter(
+    (scenario) => !scenario.archived,
+  )
+  const archivedScenarios = state.scenarios.filter(
+    (scenario) => scenario.archived,
+  )
+
   const list = document.getElementById('scenario-list')!
   const emptyMessage = document.getElementById('empty-message')!
-  emptyMessage.hidden = state.scenarios.length > 0
+  emptyMessage.hidden = visibleScenarios.length > 0
   emptyMessage.textContent =
     accessState === 'granted'
       ? 'No hay escenarios. Crea el primero con "Nuevo escenario".'
       : 'Importa la carpeta .mocks de tu repo para empezar.'
 
   list.replaceChildren(
-    ...state.scenarios.map((scenario) => buildScenarioCard(state, scenario)),
+    ...visibleScenarios.map((scenario) => buildScenarioCard(state, scenario)),
   )
+
+  const archivedSection = document.getElementById('archived-section')!
+  const archivedList = document.getElementById('archived-list')!
+  archivedSection.hidden = archivedScenarios.length === 0
+  archivedList.replaceChildren(
+    ...archivedScenarios.map((scenario) =>
+      buildScenarioReadCard(state, scenario),
+    ),
+  )
+  syncArchivedVisibility()
   list
     .querySelectorAll('textarea')
     .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
@@ -1083,17 +1196,10 @@ document.getElementById('new-scenario')!.addEventListener('click', async () => {
     .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
 })
 
-document
-  .getElementById('global-toggle')!
-  .addEventListener('change', (event) => {
-    void patchState({ enabled: (event.target as HTMLInputElement).checked })
-  })
-
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.state) return
   const state = changes.state.newValue as MockerState | undefined
   if (!state) return
-  renderGlobalToggle(state)
   const activeEnvironmentSelect = document.querySelector<HTMLSelectElement>(
     '.card__envs-row select',
   )
@@ -1111,6 +1217,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 document.getElementById('import-project')!.addEventListener('click', () => {
   void importProject()
+})
+
+function syncArchivedVisibility() {
+  const archivedList = document.getElementById('archived-list')!
+  const archivedToggle = document.getElementById('archived-toggle')!
+  archivedToggle.textContent = `${archivedExpanded ? '▾' : '▸'} Archivados (${archivedList.children.length})`
+  archivedList.hidden = !archivedExpanded
+}
+
+document.getElementById('archived-toggle')!.addEventListener('click', () => {
+  archivedExpanded = !archivedExpanded
+  syncArchivedVisibility()
 })
 
 function selectTab(docs: boolean) {

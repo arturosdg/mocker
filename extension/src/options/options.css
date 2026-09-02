@@ -343,6 +343,20 @@ body {
   margin-bottom: 8px;
 }
 
+.card__top-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.archived {
+  margin-top: 20px;
+}
+
+.archived .card {
+  opacity: 0.7;
+}
+
 .card__header {
   display: flex;
   gap: 10px;
