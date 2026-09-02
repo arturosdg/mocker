@@ -2,12 +2,14 @@ import { resolveActiveMocks, type MockerState } from './lib/state'
 
 function pushMocks(state: MockerState | undefined) {
   if (!state) return
+  const originDisabled =
+    state.disabledOrigins?.includes(location.origin) ?? false
   window.postMessage(
     {
       source: 'mocker-extension',
       type: 'mocks',
-      mocks: resolveActiveMocks(state),
-      capturing: state.enabled !== false,
+      mocks: originDisabled ? [] : resolveActiveMocks(state),
+      capturing: state.enabled !== false && !originDisabled,
     },
     '*',
   )

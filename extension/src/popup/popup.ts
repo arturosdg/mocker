@@ -20,6 +20,7 @@ const MAX_VISIBLE_CAPTURES = 20
 const expandedScenarios = new Set<string>()
 const addedRequests = new Map<string, { scenarioId: string; mockUrl: string }>()
 let activeTabId: number | undefined
+let activeOrigin: string | undefined
 let networkOpen = false
 let destinationScenarioId = ''
 let accessState: AccessState = 'no-project'
@@ -220,6 +221,33 @@ function renderGlobalToggle(state: MockerState) {
   toggle.checked = state.enabled !== false
 }
 
+function renderOriginToggle(state: MockerState) {
+  const group = document.getElementById('origin-group')!
+  const isHttpOrigin =
+    activeOrigin !== undefined && /^https?:\/\//.test(activeOrigin)
+  group.hidden = !isHttpOrigin
+  if (!isHttpOrigin || !activeOrigin) return
+
+  document.getElementById('origin-label')!.textContent = activeOrigin.replace(
+    /^https?:\/\//,
+    '',
+  )
+  const toggle = document.getElementById('origin-toggle') as HTMLInputElement
+  toggle.checked = !(state.disabledOrigins ?? []).includes(activeOrigin)
+}
+
+async function toggleOrigin(enabled: boolean) {
+  if (!activeOrigin) return
+  const state = await getState()
+  const disabledOrigins = new Set(state.disabledOrigins ?? [])
+  if (enabled) {
+    disabledOrigins.delete(activeOrigin)
+  } else {
+    disabledOrigins.add(activeOrigin)
+  }
+  await patchState({ disabledOrigins: [...disabledOrigins] })
+}
+
 function renderToolbar(state: MockerState) {
   document.getElementById('project-name')!.textContent =
     state.project?.name ?? '—'
@@ -249,7 +277,11 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
   list.className =
     state.enabled === false ? 'scenarios scenarios--off' : 'scenarios'
 
-  if (state.scenarios.length === 0) {
+  const visibleScenarios = state.scenarios.filter(
+    (scenario) => !scenario.archived,
+  )
+
+  if (visibleScenarios.length === 0) {
     list.replaceChildren()
     emptyMessage.hidden = false
     emptyMessage.textContent =
@@ -261,7 +293,7 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
 
   emptyMessage.hidden = true
   list.replaceChildren(
-    ...state.scenarios.map((scenario) =>
+    ...visibleScenarios.map((scenario) =>
       buildScenarioItem(state, scenario, counts),
     ),
   )
@@ -449,6 +481,7 @@ async function render() {
   accessState = access
   renderConnection()
   renderGlobalToggle(state)
+  renderOriginToggle(state)
   renderToolbar(state)
   renderScenarios(state, counts)
   renderNetwork(state, requests)
@@ -463,6 +496,10 @@ document
   .addEventListener('change', (event) => {
     void toggleGlobal((event.target as HTMLInputElement).checked)
   })
+
+document.getElementById('origin-toggle')!.addEventListener('change', (event) => {
+  void toggleOrigin((event.target as HTMLInputElement).checked)
+})
 
 document
   .getElementById('environment-select')!
@@ -503,11 +540,22 @@ async function resolveActiveTabId(): Promise<number | undefined> {
   return activeTab?.id
 }
 
+async function resolveActiveOrigin(): Promise<string | undefined> {
+  if (activeTabId === undefined) return undefined
+  try {
+    const tab = await chrome.tabs.get(activeTabId)
+    return tab.url ? new URL(tab.url).origin : undefined
+  } catch {
+    return undefined
+  }
+}
+
 void Promise.all([
   resolveActiveTabId(),
   chrome.storage.local.get('popupNetworkOpen'),
-]).then(([resolvedTabId, { popupNetworkOpen }]) => {
+]).then(async ([resolvedTabId, { popupNetworkOpen }]) => {
   activeTabId = resolvedTabId
   networkOpen = popupNetworkOpen === true
+  activeOrigin = await resolveActiveOrigin()
   void render()
 })

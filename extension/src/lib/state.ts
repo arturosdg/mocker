@@ -12,11 +12,13 @@ export interface Scenario {
   id: string
   name: string
   description?: string
+  archived?: boolean
   mocks: Mock[]
 }
 
 export interface Project {
   name: string
+  order?: string[]
   environments?: Record<string, Record<string, string>>
 }
 
@@ -28,6 +30,7 @@ export interface ScenarioActivation {
 export interface MockerState {
   connected: boolean
   enabled?: boolean
+  disabledOrigins?: string[]
   project?: Project
   scenarios: Scenario[]
   activation: Record<string, ScenarioActivation>
@@ -83,6 +86,7 @@ export function resolveActiveMocks(state: MockerState): ResolvedMock[] {
     : {}
 
   const activeScenarios = state.scenarios
+    .filter((scenario) => !scenario.archived)
     .filter((scenario) => state.activation[scenario.id]?.active)
     .sort(
       (first, second) =>

@@ -76,8 +76,14 @@ carpeta** (un clic). Los cambios hechos por fuera (un `git pull`, un agente
 editando los YAML) se recogen automáticamente cada 30 s y al abrir el popup o
 la configuración.
 
-> El paquete `daemon/` (CLI por WebSocket) ya no es necesario para la
-> extensión; queda como base para tooling de agentes (MCP) futuro.
+## Para agentes
+
+Un agente (Claude Code, etc.) trabaja sobre los mismos ficheros: edita los
+YAML de `.mocks/` con sus tools normales y la extensión recoge los cambios
+sola. Para cerrar el bucle sin navegador, mocker vuelca las últimas requests
+capturadas (método, URL, status, body real y si las sirvió un mock) a
+`.mocks/.runtime/requests.json` — el agente lo lee para verificar que su mock
+matchea. Añade `.mocks/.runtime/` al `.gitignore` del repo.
 
 La activación es estado del navegador (no toca los ficheros) y tiene tres
 niveles en el popup: un **toggle global** de interceptación en la cabecera,
@@ -105,13 +111,15 @@ el contador verde del popup son las señales de que el mock está funcionando.
 
 ## Roadmap
 
-- [x] Fase 1 — walking skeleton: daemon + popup con switches + intercepción fetch/XHR
-- [x] Fase 2 — gestión manual de escenarios: settings page + API de escritura en el daemon
-- [ ] Fase 3 — MCP server (`create_scenario`, `activate_scenario`, `get_request_log`…)
-- [ ] Fase 4 — request log matched/unmatched visible desde CLI/MCP
-- [ ] Fase 5 — grabación de respuestas reales a fichero
-- [ ] Fase 6 — robustez: handshake con token, multi-proyecto, matching por query
-- [ ] Fase 7 — adopción: empaquetado, onboarding, `.mocks/` en un repo real
+- [x] Escenarios YAML en el repo + popup con toggles + intercepción fetch/XHR
+- [x] Settings page con gestión completa (lectura/edición, crear, duplicar,
+      archivar, reordenar, eliminar)
+- [x] File System Access: sin CLI ni procesos externos
+- [x] Captura de red con añadir-como-mock (popup y panel de DevTools)
+- [x] Request log para agentes en `.mocks/.runtime/requests.json`
+- [ ] Adopción: `.mocks/` en un repo real, empaquetado para el equipo
+- [ ] Deuda: activación de mocks por índice (baila al reordenar), matching por
+      query string, multi-proyecto
 
 ## Settings page
 
@@ -121,9 +129,14 @@ página de configuración en pestaña completa. Los escenarios se muestran en
 toggles de activación operativos); **Editar** abre el formulario completo
 (nombre, descripción, mocks con nombre opcional,
 método/URL/status/delay/respuesta), con Cancelar para volver sin guardar,
-crear, duplicar y eliminar. La tarjeta de proyecto también es plegable. Los toggles de
-activación (global, escenario y mock) también viven aquí y aplican al
-instante, sin pasar por Guardar. Renombrar = editar el campo Nombre y guardar;
+crear, duplicar, **archivar** (los escenarios archivados salen de las listas y
+dejan de interceptar; viven plegados en la sección Archivados), **reordenar**
+con ↑/↓ (escenarios en lectura, mocks en edición; el orden de escenarios se
+persiste en `project.yaml: order`) y eliminar. La tarjeta de proyecto también
+es plegable. Los toggles de activación (escenario y mock) aplican al instante,
+sin pasar por Guardar; el toggle global de Mocking y el interruptor por origen
+(dominio+puerto de la pestaña actual) viven en el popup. Renombrar = editar el
+campo Nombre y guardar;
 el fichero conserva su id para que la activación no se pierda. La tarjeta de
 proyecto edita `project.yaml`: nombre y los entornos con sus variables
 (sección plegable). Las URLs con `{{variables}}` se validan en vivo: borde
@@ -135,8 +148,9 @@ rojo si no existe en ninguno, con el detalle en el tooltip.
 Además del popup, mocker añade un panel **mocker** al inspector de Chrome
 (DevTools) con la misma información, ligado a la pestaña inspeccionada:
 escenarios con sus toggles y la sección de red con sus capturas y el botón
-de añadir. Usa el que te resulte más cómodo — son la misma vista. **Guardar escribe el YAML en el repo vía daemon**
-(verás el diff en `git status`) — la página no tiene almacenamiento propio: el
-watcher devuelve el cambio y todo queda en los ficheros. Si los ficheros
+de añadir. Usa el que te resulte más cómodo — son la misma vista.
+
+Guardar escribe el YAML en el repo (verás el diff en `git status`) — nada
+tiene almacenamiento propio: todo queda en los ficheros. Si los ficheros
 cambian mientras editas, un aviso te pide guardar o recargar en vez de pisarte
 la edición.

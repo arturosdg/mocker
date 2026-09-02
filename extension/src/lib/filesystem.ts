@@ -18,6 +18,7 @@ export interface WriteResult {
 export interface ScenarioPayload {
   name: string
   description?: string
+  archived?: boolean
   mocks: Mock[]
 }
 
@@ -150,7 +151,7 @@ export async function reloadSnapshot(): Promise<WriteResult> {
 
   try {
     const project = parse(await readFileText(handle, 'project.yaml')) as Project
-    const scenarios = await readScenarios(handle)
+    const scenarios = sortScenarios(await readScenarios(handle), project)
     const state = await getState()
     const changed =
       JSON.stringify({ project: state.project, scenarios: state.scenarios }) !==
@@ -185,7 +186,19 @@ async function readScenarios(
     const parsed = parse(await file.text()) as Omit<Scenario, 'id'>
     scenarios.push({ id: entry.name.replace(/\.ya?ml$/, ''), ...parsed })
   }
-  return scenarios.sort((first, second) => first.id.localeCompare(second.id))
+  return scenarios
+}
+
+function sortScenarios(scenarios: Scenario[], project: Project): Scenario[] {
+  const order = project.order ?? []
+  return scenarios.sort((first, second) => {
+    const firstIndex = order.indexOf(first.id)
+    const secondIndex = order.indexOf(second.id)
+    if (firstIndex !== -1 && secondIndex !== -1) return firstIndex - secondIndex
+    if (firstIndex !== -1) return -1
+    if (secondIndex !== -1) return 1
+    return first.id.localeCompare(second.id)
+  })
 }
 
 async function requireGrantedDirectory(): Promise<FileSystemDirectoryHandle> {
@@ -226,6 +239,7 @@ function scenarioFileContent(payload: ScenarioPayload): string {
   return stringify({
     name: payload.name,
     ...(payload.description ? { description: payload.description } : {}),
+    ...(payload.archived ? { archived: true } : {}),
     mocks: payload.mocks,
   })
 }
@@ -311,11 +325,34 @@ export function deleteScenario(id: string): Promise<WriteResult> {
   })
 }
 
+export async function writeRuntimeRequestsLog(requests: unknown[]) {
+  try {
+    const handle = await loadDirectoryHandle().catch(() => undefined)
+    if (!handle) return
+    if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+      return
+    }
+    const runtimeDirectory = await handle.getDirectoryHandle('.runtime', {
+      create: true,
+    })
+    await writeFile(
+      runtimeDirectory,
+      'requests.json',
+      JSON.stringify(requests, null, 2),
+    )
+  } catch {
+    // best effort: the runtime log must never break capturing
+  }
+}
+
 export function updateProject(project: Project): Promise<WriteResult> {
   return performWrite(async (handle) => {
     if (!project.name?.trim()) throw new Error('El proyecto necesita un nombre')
     const content = stringify({
       name: project.name.trim(),
+      ...(project.order && project.order.length > 0
+        ? { order: project.order }
+        : {}),
       ...(project.environments && Object.keys(project.environments).length > 0
         ? { environments: project.environments }
         : {}),
