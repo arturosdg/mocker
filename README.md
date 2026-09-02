@@ -94,6 +94,19 @@ la configuración.
 
 ## Para agentes
 
+Este repo es también un **plugin de Claude Code** con la skill `mocker`, que
+enseña al agente el flujo completo (formato de ficheros, matching,
+verificación). Instalación en dos comandos, dentro de Claude Code:
+
+```
+/plugin marketplace add arturosdg/mocker
+/plugin install mocker@mocker
+```
+
+(Funciona con el repo privado si tienes acceso git a él.) A partir de ahí el
+agente activa la skill solo cuando le pidas mockear la red, o manualmente con
+`/mocker`.
+
 Un agente (Claude Code, etc.) trabaja sobre los mismos ficheros: edita los
 YAML de `.mocks/` con sus tools normales y la extensión recoge los cambios
 sola. Para cerrar el bucle sin navegador, mocker vuelca las últimas 50
