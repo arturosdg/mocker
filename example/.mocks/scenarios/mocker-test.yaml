@@ -1,0 +1,8 @@
+name: Mocker test
+description: The curation oracle returns no tasks
+mocks:
+  - name: Oracle with no tasks
+    method: GET
+    url: https://curation.sta.monline/api/tasks/
+    status: 200
+    response: []

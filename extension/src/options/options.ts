@@ -1130,7 +1130,7 @@ function renderConnection() {
 
 async function importProject() {
   const result = await pickProjectDirectory()
-  if (!result.ok && result.error !== 'Selección cancelada') {
+  if (!result.ok && result.error !== 'Selection cancelled') {
     renderAccessBanner(result.error)
     return
   }

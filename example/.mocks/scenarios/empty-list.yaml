@@ -1,5 +1,5 @@
-name: Lista vacía
-description: El listado no devuelve ningún elemento
+name: Empty list
+description: The listing returns no elements
 mocks:
   - method: GET
     url: '{{api}}/api/items/'

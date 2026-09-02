@@ -1,5 +1,5 @@
-name: Lista vacía (copia)
-description: El listado no devuelve ningún elemento
+name: Empty list (copy)
+description: The listing returns no elements
 archived: true
 mocks:
   - method: GET

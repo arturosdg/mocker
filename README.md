@@ -1,4 +1,4 @@
-# Mocker
+# <img src="extension/icons/icon-48.png" alt="" width="28" align="top" /> Mocker
 
 Scenario-based network mocking driven by files in your repo. Mock scenarios
 live as YAML in `.mocks/` inside your app's repo (versioned with your
@@ -193,6 +193,9 @@ add-as-mock, the runtime log, editing/CRUD/validation/archiving, drag
 reorder, docs and the panel. Set `MOCKER_CHROME` to point at a specific
 binary; by default it uses the Playwright-cache Chromium or the system
 Chrome.
+
+`npm run screenshots` regenerates the images above (`docs/*.png`) from the
+same harness, using a small demo project.
 
 ## Releases
 
