@@ -1,8 +1,0 @@
-name: Prueba de mocker
-description: El oráculo de curación no devuelve ninguna tarea
-mocks:
-  - name: Oráculo sin tareas
-    method: GET
-    url: https://curation.sta.monline/api/tasks/
-    status: 200
-    response: []
