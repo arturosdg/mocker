@@ -118,6 +118,16 @@ it, `mocked: true` plus the `scenario`, `mockName` and `mockUrl` that
 matched. Entries without `mocked` are real traffic that passed through — raw
 material for new mocks. Add `.mocks/.runtime/` to the repo's `.gitignore`.
 
+## WebSocket pushes (Centrifugo-friendly)
+
+The popup's **WebSockets · this tab** section lists the page's live sockets
+and injects messages as if the server had pushed them: socket url filter +
+channel + data + Send. With a channel, the frame ships in the Centrifugo v2
+envelope (`{"push":{"channel":…,"pub":{"data":…}}}`), so a centrifuge client
+delivers it to that channel's subscription; without one, the data goes as a
+raw frame — useful for any WebSocket app. Injection rides the page's real
+connection: the client must be connected (and subscribed, for channels).
+
 ## Mocked requests show in the Console
 
 Every matched request logs to the page console with the original url intact:

@@ -135,6 +135,20 @@ mocks:
           mock the same url, the last activated one wins.
         </p>
 
+        <h3>WebSockets: emitting server pushes</h3>
+        <p>
+          The popup's <strong>WebSockets · this tab</strong> section lists the
+          page's live sockets and lets you inject a message as if the server
+          had sent it: pick a socket (or leave the url filter empty for all),
+          write a <strong>channel</strong> and <strong>data</strong>, and
+          Send. With a channel, the frame is wrapped in the Centrifugo v2
+          envelope — <code>{"push":{"channel":"…","pub":{"data":…}}}</code> —
+          so a centrifuge client routes it to that channel's subscription;
+          with no channel, the data is sent as a raw frame. The message is
+          injected over the page's real connection, so the client must
+          already be connected and subscribed.
+        </p>
+
         <h3>For agents: .runtime/requests.json</h3>
         <p>
           With the project connected, mocker dumps the last 50 captured
