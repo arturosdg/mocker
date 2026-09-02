@@ -1134,6 +1134,7 @@ async function importProject() {
     renderAccessBanner(result.error)
     return
   }
+  if (result.ok) notifyConnected()
   await render()
 }
 
@@ -1143,8 +1144,16 @@ async function reconnectProject() {
     renderAccessBanner('Chrome denied access to the folder')
     return
   }
+  notifyConnected()
   await reloadSnapshot()
   await render()
+}
+
+// El background purga los logs de runtime la primera vez que ve la carpeta
+// accesible: se lo decimos al conectar para que la purga no caiga en mitad de
+// la sesión, cuando ya hay tráfico capturado.
+function notifyConnected() {
+  void chrome.runtime.sendMessage({ type: 'mocker:sync' }).catch(() => {})
 }
 
 function renderAccessBanner(errorMessage?: string) {

@@ -653,6 +653,9 @@ check(
   'botón de frame pasa a flecha',
   (await inFrameRow.locator('.capture-row__add').textContent()) === '→',
 )
+// una alarma de sync a mitad de sesión no debe llevarse por delante los logs
+await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'mocker:sync' }))
+await popup.waitForTimeout(600)
 const wsRuntimeLog = JSON.parse(await readOpfs(['.runtime', 'websockets.json']))
 check(
   'websockets.json con frames en ambas direcciones',
