@@ -464,11 +464,24 @@ chrome.storage.onChanged.addListener(() => {
 
 void reloadSnapshot()
 
+async function resolveActiveTabId(): Promise<number | undefined> {
+  const tabParam = new URLSearchParams(location.search).get('tab')
+  if (tabParam) {
+    document.body.classList.add('panel')
+    return Number(tabParam)
+  }
+  const [activeTab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  })
+  return activeTab?.id
+}
+
 void Promise.all([
-  chrome.tabs.query({ active: true, currentWindow: true }),
+  resolveActiveTabId(),
   chrome.storage.local.get('popupNetworkOpen'),
-]).then(([[activeTab], { popupNetworkOpen }]) => {
-  activeTabId = activeTab?.id
+]).then(([resolvedTabId, { popupNetworkOpen }]) => {
+  activeTabId = resolvedTabId
   networkOpen = popupNetworkOpen === true
   void render()
 })

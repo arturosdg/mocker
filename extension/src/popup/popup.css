@@ -29,6 +29,11 @@
   background: transparent;
 }
 
+body.panel {
+  width: auto;
+  min-height: 100vh;
+}
+
 body {
   margin: 0;
   width: 400px;

@@ -10,6 +10,8 @@ await build({
     'src/interceptor.ts',
     'src/popup/popup.ts',
     'src/options/options.ts',
+    'src/devtools.ts',
+    'src/panel.ts',
   ],
   bundle: true,
   format: 'iife',
@@ -24,3 +26,5 @@ cpSync('src/popup/popup.html', 'dist/popup.html')
 cpSync('src/popup/popup.css', 'dist/popup.css')
 cpSync('src/options/options.html', 'dist/options.html')
 cpSync('src/options/options.css', 'dist/options.css')
+cpSync('devtools.html', 'dist/devtools.html')
+cpSync('panel.html', 'dist/panel.html')

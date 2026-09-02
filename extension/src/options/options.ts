@@ -13,7 +13,6 @@ import {
   EMPTY_STATE,
   isMockActive,
   selectedEnvironment,
-  type CapturedRequest,
   type Mock,
   type MockerState,
   type Project,
@@ -40,6 +39,9 @@ function parsePendingFocus(): PendingFocus | null {
 }
 
 let pendingFocus: PendingFocus | null = parsePendingFocus()
+const editingScenarios = new Set<string>()
+if (pendingFocus) editingScenarios.add(pendingFocus.scenarioId)
+let projectExpanded = false
 
 function applyPendingFocus() {
   if (!pendingFocus) return
@@ -62,14 +64,7 @@ function applyPendingFocus() {
   pendingFocus = null
 }
 let environmentsExpanded = false
-let networkExpanded = false
-let destinationScenarioId = ''
 const mockReaders = new WeakMap<Element, () => Mock>()
-
-async function getCapturedRequests(): Promise<CapturedRequest[]> {
-  const { requests } = await chrome.storage.session.get('requests')
-  return (requests as CapturedRequest[] | undefined) ?? []
-}
 
 interface VariableValidation {
   level: 'ok' | 'warn' | 'error'
@@ -458,14 +453,21 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   const card = document.createElement('section')
   card.className = 'card'
 
-  const idLabel = document.createElement('span')
-  idLabel.className = 'card__id'
-  idLabel.textContent = 'project.yaml'
+  const projectToggle = document.createElement('button')
+  projectToggle.className = 'card__mocks-title card__mocks-title--toggle'
 
-  const top = document.createElement('div')
-  top.className = 'card__top'
-  top.append(idLabel)
-  card.append(top)
+  const body = document.createElement('div')
+
+  const syncProjectVisibility = () => {
+    projectToggle.textContent = `${projectExpanded ? '▾' : '▸'} Proyecto — ${project.name} (project.yaml)`
+    body.hidden = !projectExpanded
+  }
+  projectToggle.addEventListener('click', () => {
+    projectExpanded = !projectExpanded
+    syncProjectVisibility()
+  })
+
+  card.append(projectToggle, body)
 
   const nameInput = buildTextInput(project.name, 'Nombre del proyecto')
 
@@ -567,7 +569,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
   footer.className = 'card__footer'
   footer.append(document.createElement('div'), saveButton)
 
-  card.append(
+  body.append(
     header,
     environmentsRow,
     environmentsContainer,
@@ -575,6 +577,7 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
     errorMessage,
     footer,
   )
+  syncProjectVisibility()
 
   const handleCardEdit = (event: Event) => {
     const target = event.target as HTMLElement
@@ -594,6 +597,124 @@ function buildProjectCard(state: MockerState): HTMLElement | null {
 }
 
 function buildScenarioCard(
+  state: MockerState,
+  scenario: Scenario | null,
+): HTMLElement {
+  if (scenario && !editingScenarios.has(scenario.id)) {
+    return buildScenarioReadCard(state, scenario)
+  }
+  return buildScenarioEditCard(state, scenario)
+}
+
+async function rebuildScenarioCard(scenarioId: string) {
+  const state = await getState()
+  const scenario = state.scenarios.find(
+    (candidate) => candidate.id === scenarioId,
+  )
+  const oldCard = document.querySelector(
+    `[data-scenario-id="${CSS.escape(scenarioId)}"]`,
+  )
+  if (!oldCard || !scenario) {
+    void render()
+    return
+  }
+  const newCard = buildScenarioCard(state, scenario)
+  oldCard.replaceWith(newCard)
+  newCard
+    .querySelectorAll('textarea')
+    .forEach((textarea) => autoGrow(textarea as HTMLTextAreaElement))
+}
+
+function buildScenarioReadCard(
+  state: MockerState,
+  scenario: Scenario,
+): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'card card--read'
+  card.dataset.scenarioId = scenario.id
+
+  const idLabel = document.createElement('span')
+  idLabel.className = 'card__id'
+  idLabel.textContent = `${scenario.id}.yaml`
+
+  const top = document.createElement('div')
+  top.className = 'card__top'
+  top.append(
+    idLabel,
+    buildToggle(
+      state.activation[scenario.id]?.active ?? false,
+      (checked) => void toggleScenario(scenario.id, checked),
+    ),
+  )
+
+  const name = document.createElement('h3')
+  name.className = 'card__name'
+  name.textContent = scenario.name
+
+  card.append(top, name)
+
+  if (scenario.description) {
+    const description = document.createElement('p')
+    description.className = 'card__description'
+    description.textContent = scenario.description
+    card.append(description)
+  }
+
+  const mocksList = document.createElement('div')
+  mocksList.className = 'card__read-mocks'
+  mocksList.replaceChildren(
+    ...scenario.mocks.map((mock, mockIndex) => {
+      const row = document.createElement('div')
+      row.className = 'read-mock'
+
+      const method = document.createElement('span')
+      method.className = 'read-mock__method'
+      method.textContent = mock.method.toUpperCase()
+
+      const label = document.createElement('span')
+      label.className = 'read-mock__label'
+      label.textContent = mock.name ?? mock.url
+      label.title = `${mock.method.toUpperCase()} ${mock.url}`
+
+      const status = document.createElement('span')
+      status.className =
+        mock.status >= 400
+          ? 'read-mock__status read-mock__status--error'
+          : 'read-mock__status'
+      status.textContent = String(mock.status)
+
+      row.append(
+        method,
+        label,
+        status,
+        buildToggle(
+          isMockActive(state, scenario.id, mockIndex),
+          (checked) => void toggleMock(scenario.id, mockIndex, checked),
+          'small',
+        ),
+      )
+      return row
+    }),
+  )
+  card.append(mocksList)
+
+  const editButton = document.createElement('button')
+  editButton.className = 'button'
+  editButton.textContent = 'Editar'
+  editButton.addEventListener('click', () => {
+    editingScenarios.add(scenario.id)
+    void rebuildScenarioCard(scenario.id)
+  })
+
+  const footer = document.createElement('div')
+  footer.className = 'card__footer card__footer--read'
+  footer.append(editButton)
+  card.append(footer)
+
+  return card
+}
+
+function buildScenarioEditCard(
   state: MockerState,
   scenario: Scenario | null,
 ): HTMLElement {
@@ -690,9 +811,22 @@ function buildScenarioCard(
       errorMessage.hidden = false
       return
     }
+    if (scenario) editingScenarios.delete(scenario.id)
     hasUnsavedEdits = false
     await render()
     showSnackbar(scenario ? 'Escenario guardado' : 'Escenario creado')
+  })
+
+  const cancelButton = document.createElement('button')
+  cancelButton.className = 'button'
+  cancelButton.textContent = 'Cancelar'
+  cancelButton.addEventListener('click', () => {
+    if (scenario) {
+      editingScenarios.delete(scenario.id)
+      void rebuildScenarioCard(scenario.id)
+      return
+    }
+    card.remove()
   })
 
   const footerActions = document.createElement('div')
@@ -733,9 +867,13 @@ function buildScenarioCard(
     footerActions.append(duplicateButton, deleteButton)
   }
 
+  const footerMain = document.createElement('div')
+  footerMain.className = 'card__footer-side'
+  footerMain.append(cancelButton, saveButton)
+
   const footer = document.createElement('div')
   footer.className = 'card__footer'
-  footer.append(footerActions, saveButton)
+  footer.append(footerActions, footerMain)
 
   card.append(
     header,
@@ -828,180 +966,6 @@ function renderAccessBanner(errorMessage?: string) {
   }
 }
 
-function buildRequestRow(
-  state: MockerState,
-  request: CapturedRequest,
-  errorMessage: HTMLElement,
-): HTMLElement {
-  const row = document.createElement('div')
-  row.className = 'request-row'
-
-  const time = document.createElement('span')
-  time.className = 'request-row__time'
-  time.textContent = new Date(request.at).toLocaleTimeString('es-ES', {
-    hour12: false,
-  })
-
-  const method = document.createElement('span')
-  method.className = 'request-row__method'
-  method.textContent = request.method.toUpperCase()
-
-  const url = document.createElement('span')
-  url.className = 'request-row__url'
-  try {
-    url.textContent = new URL(request.url).pathname
-  } catch {
-    url.textContent = request.url
-  }
-  url.title = request.url
-
-  const status = document.createElement('span')
-  status.className =
-    request.status >= 400
-      ? 'request-row__status request-row__status--error'
-      : 'request-row__status'
-  status.textContent = String(request.status)
-
-  row.append(time, method, url, status)
-
-  if (request.mocked) {
-    const badge = document.createElement('span')
-    badge.className = 'request-row__mocked'
-    badge.textContent = 'mock'
-    row.append(badge)
-  } else {
-    const addButton = document.createElement('button')
-    addButton.className = 'button button--small'
-    addButton.textContent = 'Añadir'
-    addButton.title = 'Añade esta request como mock al escenario destino'
-    addButton.addEventListener('click', async () => {
-      const scenario = state.scenarios.find(
-        (candidate) => candidate.id === destinationScenarioId,
-      )
-      if (!scenario) {
-        errorMessage.textContent = 'Elige un escenario destino'
-        errorMessage.hidden = false
-        return
-      }
-      let mockUrl = request.url
-      try {
-        mockUrl = new URL(request.url).pathname
-      } catch {
-        // keep the raw url
-      }
-      const result = await updateScenarioFile(scenario.id, {
-        name: scenario.name,
-        ...(scenario.description ? { description: scenario.description } : {}),
-        mocks: [
-          ...scenario.mocks,
-          {
-            method: request.method,
-            url: mockUrl,
-            status: request.status,
-            response: parseResponse(request.body ?? ''),
-          },
-        ],
-      })
-      if (!result.ok) {
-        errorMessage.textContent = result.error ?? 'Error desconocido'
-        errorMessage.hidden = false
-        return
-      }
-      showSnackbar(`Mock añadido a ${scenario.name}`)
-    })
-    row.append(addButton)
-  }
-
-  return row
-}
-
-function buildNetworkPanel(
-  state: MockerState,
-  requests: CapturedRequest[],
-): HTMLElement {
-  const card = document.createElement('section')
-  card.className = 'card'
-
-  const title = document.createElement('button')
-  title.className = 'card__mocks-title card__mocks-title--toggle'
-  title.textContent = `${networkExpanded ? '▾' : '▸'} Red (${requests.length} requests capturadas)`
-  title.addEventListener('click', () => {
-    networkExpanded = !networkExpanded
-    void renderNetworkPanel()
-  })
-  card.append(title)
-
-  if (!networkExpanded) return card
-
-  const errorMessage = document.createElement('p')
-  errorMessage.className = 'card__error'
-  errorMessage.hidden = true
-
-  const destinationLabel = document.createElement('span')
-  destinationLabel.className = 'field__label'
-  destinationLabel.textContent = 'Añadir a:'
-
-  const destinationSelect = document.createElement('select')
-  destinationSelect.className = 'network__destination'
-  destinationSelect.replaceChildren(
-    ...state.scenarios.map((scenario) => {
-      const option = document.createElement('option')
-      option.value = scenario.id
-      option.textContent = scenario.name
-      return option
-    }),
-  )
-  if (
-    destinationScenarioId &&
-    state.scenarios.some((scenario) => scenario.id === destinationScenarioId)
-  ) {
-    destinationSelect.value = destinationScenarioId
-  } else {
-    destinationScenarioId = state.scenarios[0]?.id ?? ''
-  }
-  destinationSelect.addEventListener('change', () => {
-    destinationScenarioId = destinationSelect.value
-  })
-
-  const clearButton = document.createElement('button')
-  clearButton.className = 'button button--small'
-  clearButton.textContent = 'Limpiar'
-  clearButton.addEventListener('click', () => {
-    void chrome.storage.session.set({ requests: [] })
-  })
-
-  const controls = document.createElement('div')
-  controls.className = 'network__controls'
-  controls.append(destinationLabel, destinationSelect, clearButton)
-  card.append(controls, errorMessage)
-
-  if (requests.length === 0) {
-    const empty = document.createElement('p')
-    empty.className = 'network__empty'
-    empty.textContent =
-      'Sin requests todavía. Navega por tu app con Mocking encendido y aparecerán aquí.'
-    card.append(empty)
-    return card
-  }
-
-  const rows = document.createElement('div')
-  rows.className = 'network__rows'
-  rows.replaceChildren(
-    ...requests.map((request) => buildRequestRow(state, request, errorMessage)),
-  )
-  card.append(rows)
-  return card
-}
-
-async function renderNetworkPanel() {
-  const [state, requests] = await Promise.all([
-    getState(),
-    getCapturedRequests(),
-  ])
-  const container = document.getElementById('network-container')!
-  container.replaceChildren(buildNetworkPanel(state, requests))
-}
-
 function renderValidationBanner(state: MockerState) {
   const banner = document.getElementById('validation-banner')!
 
@@ -1043,7 +1007,11 @@ function renderValidationBanner(state: MockerState) {
       const item = document.createElement('button')
       item.className = 'banner__item'
       item.textContent = issue.text
-      item.addEventListener('click', () => {
+      item.addEventListener('click', async () => {
+        if (!editingScenarios.has(issue.scenarioId)) {
+          editingScenarios.add(issue.scenarioId)
+          await rebuildScenarioCard(issue.scenarioId)
+        }
         const card = document.querySelector(
           `[data-scenario-id="${CSS.escape(issue.scenarioId)}"]`,
         )
@@ -1070,7 +1038,6 @@ async function render() {
   renderAccessBanner()
   renderValidationBanner(state)
   renderGlobalToggle(state)
-  void renderNetworkPanel()
 
   const projectContainer = document.getElementById('project-container')!
   const projectCard = buildProjectCard(state)
@@ -1117,10 +1084,6 @@ document
   })
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'session' && changes.requests) {
-    void renderNetworkPanel()
-    return
-  }
   if (area !== 'local' || !changes.state) return
   const state = changes.state.newValue as MockerState | undefined
   if (!state) return
