@@ -275,4 +275,81 @@ XMLHttpRequest.prototype.send = function (
   }, mock.delay ?? 0)
 }
 
+interface TrackedSocket {
+  socket: WebSocket
+  url: string
+}
+
+const trackedSockets: TrackedSocket[] = []
+
+const OriginalWebSocket = window.WebSocket
+window.WebSocket = class extends OriginalWebSocket {
+  constructor(url: string | URL, protocols?: string | string[]) {
+    super(url, protocols)
+    const tracked = { socket: this, url: String(url) }
+    trackedSockets.push(tracked)
+    this.addEventListener('close', () => {
+      const index = trackedSockets.indexOf(tracked)
+      if (index !== -1) trackedSockets.splice(index, 1)
+    })
+  }
+}
+
+function emitToSockets(
+  urlFragment: string,
+  channel: string,
+  data: unknown,
+): { sent: number } {
+  const frame = channel
+    ? JSON.stringify({ push: { channel, pub: { data } } })
+    : typeof data === 'string'
+      ? data
+      : JSON.stringify(data)
+  const targets = trackedSockets.filter(
+    (tracked) =>
+      tracked.socket.readyState === OriginalWebSocket.OPEN &&
+      (!urlFragment || tracked.url.includes(urlFragment)),
+  )
+  for (const tracked of targets) {
+    tracked.socket.dispatchEvent(new MessageEvent('message', { data: frame }))
+  }
+  return { sent: targets.length }
+}
+
+window.addEventListener('message', (event) => {
+  const data = event.data
+  if (data?.source !== 'mocker-extension') return
+  if (data.type === 'ws-list-request') {
+    window.postMessage(
+      {
+        source: 'mocker-page',
+        type: 'ws-response',
+        requestId: data.requestId,
+        result: {
+          sockets: trackedSockets.map((tracked) => ({
+            url: tracked.url,
+            open: tracked.socket.readyState === OriginalWebSocket.OPEN,
+          })),
+        },
+      },
+      '*',
+    )
+  }
+  if (data.type === 'ws-emit') {
+    window.postMessage(
+      {
+        source: 'mocker-page',
+        type: 'ws-response',
+        requestId: data.requestId,
+        result: emitToSockets(
+          data.urlFragment as string,
+          data.channel as string,
+          data.payload,
+        ),
+      },
+      '*',
+    )
+  }
+})
+
 window.postMessage({ source: 'mocker-page', type: 'ready' }, '*')

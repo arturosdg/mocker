@@ -3,6 +3,7 @@
 // las funcionalidades. Uso: npm run e2e
 // Chrome: variable MOCKER_CHROME, o el Chromium de la caché de Playwright,
 // o el canal 'chrome' del sistema.
+import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir, homedir } from 'node:os'
@@ -41,11 +42,26 @@ const PORT = 8140
 const server = createServer((request, response) => {
   if (request.url === '/') {
     response.writeHead(200, { 'content-type': 'text/html' })
-    response.end('<html><body>e2e</body></html>')
+    response.end(`<html><body>e2e<script>
+      window.__wsMessages = []
+      const socket = new WebSocket('ws://localhost:${PORT}/connection/websocket')
+      socket.onmessage = (event) => window.__wsMessages.push(event.data)
+    </script></body></html>`)
     return
   }
   response.writeHead(200, { 'content-type': 'application/json' })
   response.end(JSON.stringify({ real: true, path: request.url }))
+})
+server.on('upgrade', (request, socket) => {
+  const accept = createHash('sha1')
+    .update(
+      `${request.headers['sec-websocket-key']}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`,
+    )
+    .digest('base64')
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n' +
+      `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
+  )
 })
 await new Promise((resolve) => server.listen(PORT, resolve))
 
@@ -544,7 +560,50 @@ check(
 )
 await settings.locator('[data-scenario-id="permock"]').getByRole('button', { name: 'Cancel' }).click()
 
-// ───────────────────────── I. Docs y panel de DevTools
+// ───────────────────────── I. WebSockets: listar y emitir
+await app.bringToFront()
+await popup.reload()
+await popup.waitForTimeout(700)
+check('sección websockets visible', await popup.locator('#ws-section').isVisible())
+await popup.locator('#ws-toggle').click()
+await popup.waitForTimeout(400)
+const socketRow = popup.locator('.ws-socket').first()
+check(
+  'socket listado con su url',
+  (await socketRow.textContent()).includes('/connection/websocket'),
+)
+await socketRow.click()
+check(
+  'click en socket rellena la url',
+  (await popup.locator('#ws-url').inputValue()).includes('/connection/websocket'),
+)
+await popup.locator('#ws-channel').fill('tasks:42')
+await popup.locator('#ws-data').fill('{"count": 3}')
+await popup.locator('#ws-send').click()
+await popup.waitForTimeout(400)
+check(
+  'emisión reporta destino',
+  (await popup.locator('#ws-result').textContent()).includes('sent to 1'),
+)
+const centrifugoFrame = await app.evaluate(() =>
+  window.__wsMessages.at(-1) ? JSON.parse(window.__wsMessages.at(-1)) : null,
+)
+check(
+  'la página recibe el sobre de Centrifugo',
+  centrifugoFrame?.push?.channel === 'tasks:42' &&
+    centrifugoFrame?.push?.pub?.data?.count === 3,
+  JSON.stringify(centrifugoFrame),
+)
+await popup.locator('#ws-channel').fill('')
+await popup.locator('#ws-data').fill('plain-frame')
+await popup.locator('#ws-send').click()
+await popup.waitForTimeout(400)
+check(
+  'frame crudo sin canal',
+  await app.evaluate(() => window.__wsMessages.at(-1) === 'plain-frame'),
+)
+
+// ───────────────────────── J. Docs y panel de DevTools
 await settings.locator('#tab-docs').click()
 check('tab de docs visible', await settings.locator('.docs h2').isVisible())
 await settings.locator('#tab-scenarios').click()

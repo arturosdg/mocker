@@ -59,6 +59,38 @@
         <p class="network__error" id="network-error" hidden></p>
       </div>
     </section>
+    <section class="network" id="ws-section" hidden>
+      <button class="network__header" id="ws-toggle">
+        <span class="network__title" id="ws-title"></span>
+        <span class="network__count" id="ws-count"></span>
+      </button>
+      <div class="network__body" id="ws-body" hidden>
+        <ul class="network__list ws-sockets" id="ws-socket-list"></ul>
+        <div class="ws-form">
+          <input
+            type="text"
+            class="ws-form__input"
+            id="ws-url"
+            placeholder="socket url contains… (empty = all)"
+          />
+          <input
+            type="text"
+            class="ws-form__input"
+            id="ws-channel"
+            placeholder="channel (empty = raw frame)"
+          />
+          <textarea
+            class="ws-form__input ws-form__data"
+            id="ws-data"
+            placeholder='data — JSON or plain text, e.g. { "count": 2 }'
+          ></textarea>
+          <div class="ws-form__actions">
+            <span class="ws-form__result" id="ws-result"></span>
+            <button class="button-send button--primary" id="ws-send">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
     <footer class="footer">
       <button class="footer__settings" id="open-settings">
         Configure scenarios
