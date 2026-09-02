@@ -671,10 +671,10 @@ function buildScenarioReadCard(
       method.className = 'read-mock__method'
       method.textContent = mock.method.toUpperCase()
 
-      const label = document.createElement('span')
-      label.className = 'read-mock__label'
-      label.textContent = mock.name ?? mock.url
-      label.title = `${mock.method.toUpperCase()} ${mock.url}`
+      const url = document.createElement('span')
+      url.className = 'read-mock__label'
+      url.textContent = mock.url
+      url.title = `${mock.method.toUpperCase()} ${mock.url}`
 
       const status = document.createElement('span')
       status.className =
@@ -683,9 +683,15 @@ function buildScenarioReadCard(
           : 'read-mock__status'
       status.textContent = String(mock.status)
 
+      const name = document.createElement('span')
+      name.className = 'read-mock__name'
+      name.textContent = mock.name ?? ''
+      name.hidden = !mock.name
+
       row.append(
         method,
-        label,
+        url,
+        name,
         status,
         buildToggle(
           isMockActive(state, scenario.id, mockIndex),
