@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>mocker — settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <header class="header">
+      <span class="header__brand">
+        <img class="header__logo" src="icons/icon-32.png" alt="" />
+        <span class="header__title">mocker</span>
+      </span>
+      <span class="header__side">
+        <button class="button button--small" id="import-project">
+          Import project
+        </button>
+        <span class="header__status" id="connection-status"></span>
+      </span>
+    </header>
+    <nav class="tabs">
+      <button class="tab tab--active" id="tab-scenarios">Scenarios</button>
+      <button class="tab" id="tab-websockets">WebSockets</button>
+      <button class="tab" id="tab-docs">Docs</button>
+    </nav>
+    <main class="settings">
+      <div id="view-scenarios">
+      <p class="banner banner--action" id="access-banner" hidden>
+        <span id="access-banner-text"></span>
+        <button class="button button--primary" id="access-banner-action"></button>
+      </p>
+      <div class="banner" id="validation-banner" hidden></div>
+      <p class="banner" id="stale-banner" hidden>
+        The files changed while you were editing — save your change or reload
+        the page to see the latest version.
+      </p>
+      <div class="scenario-cards" id="project-container"></div>
+      <div class="section-header">
+        <h2 class="section-header__title">Scenarios</h2>
+        <button class="button button--primary" id="new-scenario">
+          New scenario
+        </button>
+      </div>
+      <div class="scenario-cards" id="scenario-list"></div>
+      <p class="empty" id="empty-message" hidden></p>
+      <div class="archived" id="archived-section" hidden>
+        <button
+          class="card__mocks-title card__mocks-title--toggle"
+          id="archived-toggle"
+        ></button>
+        <div class="scenario-cards" id="archived-list"></div>
+      </div>
+      </div>
+      <div id="view-websockets" hidden>
+        <div class="section-header">
+          <h2 class="section-header__title">WebSocket messages</h2>
+          <button class="button button--primary" id="ws-add-message">
+            Add message
+          </button>
+        </div>
+        <p class="banner" id="ws-hint">
+          Saved messages live in <code>.mocks/websockets.yaml</code> and can be
+          fired from the popup's WebSockets view. With a channel, the frame is
+          wrapped in the Centrifugo push envelope; without one it is sent raw.
+        </p>
+        <div class="scenario-cards" id="ws-message-list"></div>
+        <p class="empty" id="ws-empty" hidden>
+          No saved messages. Add the pushes you fire often.
+        </p>
+        <p class="card__error" id="ws-error" hidden></p>
+        <div class="ws-footer">
+          <button class="button button--primary" id="ws-save" disabled>
+            Save
+          </button>
+        </div>
+      </div>
+      <div class="docs" id="view-docs" hidden>
+        <h2>The <code>.mocks/</code> format</h2>
+        <p>
+          Mocks live as YAML inside your app's repo, so they are versioned
+          with your branches and shared with a <code>git pull</code>. The
+          layout:
+        </p>
+        <pre>
+your-app/
+└── .mocks/
+    ├── project.yaml            # name + environments
+    └── scenarios/
+        └── empty-list.yaml     # one file = one scenario</pre>
+
+        <h3>project.yaml</h3>
+        <pre>
+name: my-app
+order:                 # optional: scenario order in the lists
+  - empty-list
+  - save-error
+environments:          # optional
+  local:
+    api: ''            # empty = the url stays a bare pathname
+  staging:
+    api: https://api.staging.example.com</pre>
+        <p>
+          <strong>Environments</strong> define variables reusable in mock urls
+          (<code>{{api}}</code>). The active environment is picked in the
+          project card or the popup; its strongest use case is separating two
+          hosts that share a pathname.
+        </p>
+
+        <h3>A scenario (scenarios/*.yaml)</h3>
+        <pre>
+name: Save error                # required
+description: The POST fails     # optional
+archived: true                  # optional: hides and deactivates it
+mocks:
+  - name: Broken save           # optional, to recognize it in lists
+    method: POST                # GET / POST / PUT / PATCH / DELETE / HEAD
+    url: '{{api}}/api/items/'   # see matching below
+    status: 500                 # response code, required
+    delay: 400                  # optional, milliseconds
+    headers:                    # optional, added to the response
+      x-custom: value
+    response:                   # the body: YAML/JSON or plain text
+      errors:
+        - internal error</pre>
+        <p>
+          The file name is the scenario id (generated from the name when
+          created from the UI) and does not change on rename, so activation
+          state is never lost.
+        </p>
+
+        <h3>URL matching</h3>
+        <p>No need to write the host. A mock url matches against the full
+        url, <code>origin + pathname</code> or <code>pathname</code>,
+        ignoring trailing slashes and the query string:</p>
+        <ul>
+          <li>
+            <code>/api/items/</code> matches
+            <code>https://any-host/api/items/?page=2</code>
+          </li>
+          <li>
+            <code>api/items</code> (no leading slash) matches as a fragment:
+            any pathname containing it
+          </li>
+          <li>
+            <code>*</code> is a wildcard:
+            <code>/api/items/*/photos/</code> matches any id in between
+          </li>
+          <li>
+            <code>{{variable}}</code> is replaced with the active
+            environment's value before matching
+          </li>
+        </ul>
+
+        <h3>What does NOT go in the files</h3>
+        <p>
+          Activation (which scenarios and mocks are on, disabled domains and
+          the active environment) is browser state: turning things on never
+          dirties your <code>git status</code>. When two active scenarios
+          mock the same url, the last activated one wins.
+        </p>
+
+        <h3>WebSockets: emitting server pushes</h3>
+        <p>
+          The popup's <strong>WebSockets · this tab</strong> section lists the
+          page's live sockets and lets you inject a message as if the server
+          had sent it: pick a socket (or leave the url filter empty for all),
+          write a <strong>channel</strong> and <strong>data</strong>, and
+          Send. With a channel, the frame is wrapped in the Centrifugo v2
+          envelope — <code>{"push":{"channel":"…","pub":{"data":…}}}</code> —
+          so a centrifuge client routes it to that channel's subscription;
+          with no channel, the data is sent as a raw frame. The message is
+          injected over the page's real connection, so the client must
+          already be connected and subscribed.
+        </p>
+        <p>
+          Frequent pushes can be <strong>saved</strong> in
+          <code>.mocks/websockets.yaml</code> (WebSockets tab, or by editing
+          the file — it is shared through git like everything else) and fired
+          with one click from the popup:
+        </p>
+        <pre>
+messages:
+  - name: New task push
+    url: centrifugo          # optional: socket url filter
+    channel: tasks:123       # optional: empty = raw frame
+    data:
+      count: 2</pre>
+
+        <h3>For agents: .runtime/ logs</h3>
+        <p>
+          With the project connected, mocker dumps the last 50 captured
+          requests to <code>.mocks/.runtime/requests.json</code> and the last
+          50 WebSocket frames (both directions) to
+          <code>.mocks/.runtime/websockets.json</code>. An agent can edit the
+          YAML files directly and read those files to verify what was called
+          and what matched — without opening a browser. Both logs are purged
+          at the start of each browser session. Add
+          <code>.mocks/.runtime/</code> to your <code>.gitignore</code>.
+        </p>
+        <pre>
+{
+  "updatedAt": "2026-09-02T12:00:00.000Z",
+  "requests": [
+    {
+      "at": 1788350000000,        // epoch ms
+      "origin": "https://localhost:3000",
+      "tabId": 123,
+      "method": "POST",
+      "url": "https://localhost:3000/api/items/",
+      "requestBody": "{\"name\":\"x\"}",   // payload sent (≤32KB)
+      "status": 500,
+      "body": "{\"errors\":[...]}",        // response received (≤32KB)
+      "mocked": true,                      // served by mocker
+      "scenario": "save-error",            // scenario that matched
+      "mockName": "Broken save",           // if the mock has a name
+      "mockUrl": "{{api}}/api/items/"      // the mock url that matched
+    }
+  ]
+}</pre>
+        <p>
+          Requests without <code>mocked</code> are real traffic that passed
+          through (with its captured response): raw material for new mocks.
+        </p>
+      </div>
+    </main>
+    <div class="snackbar" id="snackbar" hidden></div>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "mocker",
+  "description": "Drive mocker from an agent: YAML scenarios in .mocks/ + verification via .mocks/.runtime/requests.json",
+  "version": "1.1.1",
+  "author": {
+    "name": "arturosdg"
+  },
+  "homepage": "https://github.com/arturosdg/mocker"
+}

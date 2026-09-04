@@ -1,0 +1,14 @@
+{
+  "name": "mocker",
+  "description": "Agent tooling for mocker: file-driven network mocking alongside the Chrome extension",
+  "owner": {
+    "name": "arturosdg"
+  },
+  "plugins": [
+    {
+      "name": "mocker",
+      "source": "./plugins/mocker",
+      "description": "File-driven network mocking: YAML scenarios in .mocks/ + verification via .mocks/.runtime/requests.json, alongside the mocker extension"
+    }
+  ]
+}

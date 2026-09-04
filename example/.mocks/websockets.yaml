@@ -1,0 +1,26 @@
+messages:
+  - name: Item count push
+    channel: items:demo
+    data:
+      count: 2
+  - name: Refresh signal (raw frame)
+    data:
+      type: refresh
+  - name: User joins (presence)
+    data:
+      push:
+        channel: presence:demo
+        join:
+          info:
+            user: '42'
+            client: demo-client
+            conn_info:
+              name: Jane Doe
+  - name: User leaves (presence)
+    data:
+      push:
+        channel: presence:demo
+        leave:
+          info:
+            user: '42'
+            client: demo-client

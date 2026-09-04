@@ -1,0 +1,7 @@
+name: Empty list
+description: The listing returns no elements
+mocks:
+  - method: GET
+    url: '{{api}}/api/items/'
+    status: 200
+    response: []

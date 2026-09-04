@@ -1,0 +1,18 @@
+{
+  "name": "@mocker/extension",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "build:firefox": "node build.mjs firefox"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  }
+}

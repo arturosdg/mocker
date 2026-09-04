@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build:firefox -w extension
+      - name: Install Chrome for Testing
+        run: |
+          npx --yes @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/chrome"
+          echo "MOCKER_CHROME=$(find "$RUNNER_TEMP/chrome" -type f -name chrome | head -1)" >> "$GITHUB_ENV"
+      - run: npm run e2e

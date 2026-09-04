@@ -1,0 +1,8 @@
+name: Empty list (copy)
+description: The listing returns no elements
+archived: true
+mocks:
+  - method: GET
+    response: []
+    status: 200
+    url: "{{api}}/api/items/"

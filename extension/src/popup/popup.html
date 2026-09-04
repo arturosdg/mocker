@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <span class="header__brand">
+        <img class="header__logo" src="icons/icon-32.png" alt="" />
+        <span class="header__title">mocker</span>
+      </span>
+      <span class="header__side">
+        <span class="header__status" id="connection-status"></span>
+        <span id="origin-group" hidden>
+          <label class="header__mocking" id="origin-label" for="origin-toggle"
+            >Mocking</label
+          >
+          <input
+            type="checkbox"
+            class="toggle"
+            id="origin-toggle"
+            title="Mocking on this domain"
+          />
+        </span>
+      </span>
+    </header>
+    <div class="toolbar">
+      <span class="toolbar__project" id="project-name"></span>
+      <span class="toolbar__environment-group" id="environment-group" hidden>
+        <label class="toolbar__environment-label" for="environment-select"
+          >env</label
+        >
+        <select
+          id="environment-select"
+          class="toolbar__environment"
+          title="Active environment: resolves the {{variables}} in mock urls"
+        ></select>
+      </span>
+    </div>
+    <div class="segmented segmented--main">
+      <button class="segment segment--active" id="segment-mocks">Mocks</button>
+      <button class="segment" id="segment-websockets">WebSockets</button>
+    </div>
+    <div id="mocks-main">
+      <ul class="scenarios" id="scenario-list"></ul>
+      <p class="empty" id="empty-message" hidden></p>
+    </div>
+    <div id="ws-main" hidden>
+      <ul class="ws-saved" id="ws-saved-list"></ul>
+      <p class="ws-empty" id="ws-empty" hidden>
+        No saved messages — add them in settings › WebSockets.
+      </p>
+      <p class="ws-result" id="ws-result"></p>
+    </div>
+    <section class="network" id="network-section" hidden>
+      <button class="network__header" id="network-toggle">
+        <span class="network__title" id="network-title"></span>
+        <span class="network__count" id="network-count"></span>
+      </button>
+      <div class="network__body" id="network-body" hidden>
+        <div id="requests-view">
+          <div class="network__destination-row">
+            <label class="network__destination-label" for="network-destination"
+              >add to</label
+            >
+            <select
+              id="network-destination"
+              class="toolbar__environment"
+            ></select>
+          </div>
+          <ul class="network__list" id="network-list"></ul>
+        </div>
+        <div id="ws-network-view" hidden>
+          <p class="network__subtitle">Active websockets</p>
+          <ul class="network__list ws-sockets" id="ws-socket-list"></ul>
+          <p class="network__subtitle">Captured messages</p>
+          <ul class="network__list ws-frames" id="ws-frame-list"></ul>
+        </div>
+        <p class="network__error" id="network-error" hidden></p>
+      </div>
+    </section>
+    <footer class="footer">
+      <button class="footer__settings" id="open-settings">
+        Configure scenarios
+      </button>
+    </footer>
+    <script src="popup.js"></script>
+  </body>
+</html>

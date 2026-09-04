@@ -1,0 +1,6 @@
+name: example-app
+environments:
+  local:
+    api: ''
+  staging:
+    api: https://api.staging.example.com
