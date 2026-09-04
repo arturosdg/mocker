@@ -306,6 +306,21 @@ check(
   (await getJson('/api/env/')).body.v === 'env',
 )
 check('passthrough sin mock', (await getJson('/api/nada/')).body.real === true)
+const requestObjectPassthrough = await app.evaluate(async () => {
+  try {
+    const response = await fetch(
+      new Request('/api/nada/', { method: 'POST', body: '{"photo":1}' }),
+    )
+    return { status: response.status, body: await response.json() }
+  } catch (error) {
+    return { error: String(error) }
+  }
+})
+check(
+  'passthrough con objeto Request con body',
+  requestObjectPassthrough.body?.real === true,
+  JSON.stringify(requestObjectPassthrough),
+)
 const xhr = await app.evaluate(
   () =>
     new Promise((resolve) => {
@@ -407,13 +422,23 @@ check(
 // ───────────────────────── E. Log de runtime para agentes
 const runtimeLog = JSON.parse(await readOpfs(['.runtime', 'requests.json']))
 const mockedEntry = runtimeLog.requests.find((entry) => entry.mocked && entry.scenario === 'alpha')
-const postEntry = runtimeLog.requests.find((entry) => entry.method === 'POST')
+const postEntry = runtimeLog.requests.find(
+  (entry) => entry.method === 'POST' && entry.url.includes('/api/slow/'),
+)
+const requestObjectEntry = runtimeLog.requests.find(
+  (entry) => entry.method === 'POST' && entry.url.includes('/api/nada/'),
+)
 check('runtime log con updatedAt', typeof runtimeLog.updatedAt === 'string')
 check('runtime log: entrada mockeada con escenario', Boolean(mockedEntry))
 check(
   'runtime log: requestBody del POST',
   postEntry?.requestBody === '{"a":1}',
   JSON.stringify(postEntry),
+)
+check(
+  'runtime log: requestBody del POST con objeto Request',
+  requestObjectEntry?.requestBody === '{"photo":1}',
+  JSON.stringify(requestObjectEntry),
 )
 
 // ───────────────────────── F. Settings: edición, CRUD, validación

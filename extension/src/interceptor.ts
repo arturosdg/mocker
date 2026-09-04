@@ -145,7 +145,7 @@ window.fetch = async (input, init) => {
   const requestBody = capturing ? await readRequestBody(request) : undefined
 
   if (!mock) {
-    const response = await originalFetch(input, init)
+    const response = await originalFetch(request)
     if (capturing) {
       void captureFetchResponse(
         request.method,
