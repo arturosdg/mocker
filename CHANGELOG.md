@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/arturosdg/mocker/compare/v1.1.1...v1.1.2) (2026-09-08)
+
+
+### Bug Fixes
+
+* make the Request passthrough fix visible to release-please ([#46](https://github.com/arturosdg/mocker/issues/46)) ([824ad9b](https://github.com/arturosdg/mocker/commit/824ad9b5d62da2019d3fc444748a93a7b93598ed))
+
 ## [1.1.1](https://github.com/arturosdg/mocker/compare/v1.1.0...v1.1.1) (2026-09-02)
 
 
