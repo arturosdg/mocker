@@ -1,7 +1,7 @@
 {
   "name": "mocker",
   "description": "Drive mocker from an agent: YAML scenarios in .mocks/ + verification via .mocks/.runtime/requests.json",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": {
     "name": "arturosdg"
   },
