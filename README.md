@@ -170,9 +170,12 @@ the popup are the signals that a mock is working.
 
 The popup button (or `chrome://extensions` → Mocker → Options) opens the
 settings page in a full tab. Scenarios render in **read mode** (name,
-description and compact mock rows with live activation toggles); **Edit**
-opens the full form (name, description, mocks with optional name,
-method/url/status/delay/response), with Cancel to leave without saving,
+description and a `▸ Mocks (n)` toggle that opens compact mock rows with live
+activation toggles — collapsed by default, so the page reads as an index of
+scenarios instead of an endless list of endpoints); **Edit** opens the full
+form (name, description, mocks with optional name,
+method/url/status/delay/response, each response behind its own
+`▸ Response` toggle, also collapsed), with Cancel to leave without saving,
 create, duplicate, **archive** (archived scenarios leave the lists and stop
 intercepting; they live collapsed in the Archived section), **drag to
 reorder** (scenario cards in read mode; mocks by their ⠿ handle in edit

@@ -69,6 +69,9 @@ function applyPendingFocus() {
 }
 let environmentsExpanded = false
 let archivedExpanded = false
+// escenarios con su lista de mocks desplegada en modo lectura (por id): vive
+// fuera del render para sobrevivir a los repintados
+const expandedReadMocks = new Set<string>()
 const mockReaders = new WeakMap<Element, () => Mock>()
 
 const REORDER_COOLDOWN_MILLISECONDS = 140
@@ -303,6 +306,12 @@ function autoGrow(textarea: HTMLTextAreaElement) {
   textarea.style.height = `${textarea.scrollHeight + 2}px`
 }
 
+function responseSummary(value: string): string {
+  if (!value.trim()) return '(empty)'
+  const lines = value.trimEnd().split('\n').length
+  return lines > 1 ? `(${lines} lines)` : `(${value.trim().length} chars)`
+}
+
 function buildField(
   label: string,
   input: HTMLElement,
@@ -510,7 +519,29 @@ function buildMockEditor(
     autoGrow(responseInput)
   })
 
-  container.append(header, firstRow, buildField('Response', responseInput))
+  // el rótulo lo pone ya el propio toggle, así que el campo va sin caption
+  const responseField = document.createElement('label')
+  responseField.className = 'field'
+  responseField.append(responseInput)
+
+  // Los responses son el bloque más largo del editor: se pliegan por defecto
+  // para poder ver de un vistazo los métodos y urls de todos los mocks.
+  const responseToggle = document.createElement('button')
+  responseToggle.className = 'card__mocks-title card__mocks-title--toggle'
+  let responseExpanded = false
+  const syncResponseVisibility = () => {
+    responseToggle.textContent = `${responseExpanded ? '▾' : '▸'} Response ${responseSummary(responseInput.value)}`
+    responseField.hidden = !responseExpanded
+    if (responseExpanded) autoGrow(responseInput)
+  }
+  responseToggle.addEventListener('click', () => {
+    responseExpanded = !responseExpanded
+    syncResponseVisibility()
+  })
+  responseInput.addEventListener('input', () => syncResponseVisibility())
+  syncResponseVisibility()
+
+  container.append(header, firstRow, responseToggle, responseField)
 
   mockReaders.set(container, () => {
     const delay = Number(delayInput.value)
@@ -848,6 +879,9 @@ function buildScenarioReadCard(
     card.append(description)
   }
 
+  const mocksToggle = document.createElement('button')
+  mocksToggle.className = 'card__mocks-title card__mocks-title--toggle'
+
   const mocksList = document.createElement('div')
   mocksList.className = 'card__read-mocks'
   mocksList.replaceChildren(
@@ -889,7 +923,26 @@ function buildScenarioReadCard(
       return row
     }),
   )
-  card.append(mocksList)
+
+  // Un escenario puede tener decenas de mocks: la lista arranca plegada para
+  // que la página se lea como un índice de escenarios, no como un listado
+  // interminable de endpoints.
+  const syncMocksVisibility = () => {
+    const expanded = expandedReadMocks.has(scenario.id)
+    mocksToggle.textContent = `${expanded ? '▾' : '▸'} Mocks (${scenario.mocks.length})`
+    mocksList.hidden = !expanded
+  }
+  mocksToggle.addEventListener('click', () => {
+    if (expandedReadMocks.has(scenario.id)) {
+      expandedReadMocks.delete(scenario.id)
+    } else {
+      expandedReadMocks.add(scenario.id)
+    }
+    syncMocksVisibility()
+  })
+  syncMocksVisibility()
+
+  card.append(mocksToggle, mocksList)
 
   const footer = document.createElement('div')
   footer.className = 'card__footer card__footer--read'

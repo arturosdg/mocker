@@ -257,6 +257,36 @@ check(
     .isVisible()),
 )
 
+// lista de mocks plegada por defecto en modo lectura
+const alphaMocksToggle = settings
+  .locator('[data-scenario-id="alpha"] .card__mocks-title--toggle')
+  .first()
+check(
+  'mocks plegados por defecto en lectura',
+  !(await settings
+    .locator('[data-scenario-id="alpha"] .card__read-mocks')
+    .isVisible()) &&
+    (await alphaMocksToggle.textContent()).includes('▸ Mocks (4)'),
+  await alphaMocksToggle.textContent(),
+)
+await alphaMocksToggle.click()
+await settings.waitForTimeout(200)
+check(
+  'toggle despliega los mocks del escenario',
+  (await settings
+    .locator('[data-scenario-id="alpha"] .card__read-mocks')
+    .isVisible()) &&
+    (await alphaMocksToggle.textContent()).includes('▾'),
+)
+await alphaMocksToggle.click()
+await settings.waitForTimeout(200)
+check(
+  'toggle vuelve a plegarlos',
+  !(await settings
+    .locator('[data-scenario-id="alpha"] .card__read-mocks')
+    .isVisible()),
+)
+
 // ───────────────────────── C. Interceptor: matching y tipos
 const app = await context.newPage()
 await app.goto(`http://localhost:${PORT}/`)
@@ -449,6 +479,40 @@ await alphaCard.getByRole('button', { name: 'Edit', exact: true }).click()
 await settings.waitForTimeout(300)
 const saveButton = alphaCard.getByRole('button', { name: 'Save' })
 check('guardar deshabilitado sin cambios', await saveButton.isDisabled())
+
+// response plegado por defecto en edición
+const alphaResponseToggle = alphaCard
+  .locator('.mock .card__mocks-title--toggle')
+  .first()
+check(
+  'response plegado por defecto en edición',
+  !(await alphaCard.locator('.mock textarea').first().isVisible()) &&
+    (await alphaResponseToggle.textContent()).includes('▸ Response'),
+  await alphaResponseToggle.textContent(),
+)
+check(
+  'url del mock sigue visible con el response plegado',
+  await alphaCard
+    .locator('.mock .field input[type=text]:not(.mock__name)')
+    .first()
+    .isVisible(),
+)
+await alphaResponseToggle.click()
+await settings.waitForTimeout(200)
+check(
+  'toggle despliega el response y lo dimensiona',
+  (await alphaCard.locator('.mock textarea').first().isVisible()) &&
+    (await alphaCard
+      .locator('.mock textarea')
+      .first()
+      .evaluate((textarea) => textarea.getBoundingClientRect().height > 10)),
+)
+await alphaResponseToggle.click()
+await settings.waitForTimeout(200)
+check(
+  'toggle vuelve a plegar el response',
+  !(await alphaCard.locator('.mock textarea').first().isVisible()),
+)
 await alphaCard.locator('.card__header input').first().fill('Alpha renombrada')
 check('guardar habilitado al editar', !(await saveButton.isDisabled()))
 await saveButton.click()
