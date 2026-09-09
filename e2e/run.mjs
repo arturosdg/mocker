@@ -730,9 +730,14 @@ check(
     (await panel.locator('#network-section').count()) === 1,
 )
 
-// ───────────────────────── K. Purga de logs de runtime por sesión
+// ───────────────────────── K. Logs de runtime: purga por sesión y volcado
+// Sesión nueva de navegador: storage.session viene vacío, el log queda a cero.
 await serviceWorker.evaluate(async () => {
-  await chrome.storage.session.remove('runtimeLogsCleared')
+  await chrome.storage.session.remove([
+    'runtimeLogsCleared',
+    'requests',
+    'wsFrames',
+  ])
 })
 await popup.evaluate(() => chrome.runtime.sendMessage({ type: 'mocker:sync' }))
 await popup.waitForTimeout(800)
@@ -741,6 +746,96 @@ const purgedFrames = JSON.parse(await readOpfs(['.runtime', 'websockets.json']))
 check(
   'logs de runtime purgados al empezar sesión',
   purgedRequests.requests.length === 0 && purgedFrames.frames.length === 0,
+)
+
+// Conectar a mitad de sesión (proyecto nuevo o reconexión) vuelca lo ya
+// capturado, sin esperar a la siguiente petición.
+await serviceWorker.evaluate(async () => {
+  await chrome.storage.session.remove('runtimeLogsCleared')
+  await chrome.storage.session.set({
+    requests: [
+      {
+        method: 'GET',
+        url: 'http://localhost/api/pre-connect/',
+        status: 200,
+        at: Date.now(),
+      },
+    ],
+  })
+})
+await popup.evaluate(() =>
+  chrome.runtime.sendMessage({ type: 'mocker:sync', flushLogs: true }),
+)
+await popup.waitForTimeout(800)
+const flushedRequests = JSON.parse(
+  await readOpfs(['.runtime', 'requests.json']),
+)
+check(
+  'conectar a mitad de sesión vuelca las capturas previas',
+  flushedRequests.requests.some((request) =>
+    request.url.includes('/api/pre-connect/'),
+  ),
+  JSON.stringify(flushedRequests.requests),
+)
+
+// ───────────────────────── L. Proyecto nuevo en una carpeta cualquiera
+// (deja el handle apuntando a otra carpeta: va al final de la batería)
+await settings.bringToFront()
+await settings.reload()
+await settings.waitForTimeout(500)
+await settings.evaluate(async () => {
+  const root = await navigator.storage.getDirectory()
+  try {
+    await root.removeEntry('scratch', { recursive: true })
+  } catch {
+    // primera ejecución
+  }
+  const empty = await root.getDirectoryHandle('scratch', { create: true })
+  window.showDirectoryPicker = async () => empty
+})
+await settings.locator('#new-project').click()
+await settings.waitForTimeout(1000)
+
+const readScratch = (parts) =>
+  settings.evaluate(async (segments) => {
+    const root = await navigator.storage.getDirectory()
+    let dir = await root.getDirectoryHandle('scratch')
+    for (const segment of segments.slice(0, -1)) {
+      dir = await dir.getDirectoryHandle(segment)
+    }
+    const file = await dir.getFileHandle(segments.at(-1))
+    return (await file.getFile()).text()
+  }, parts)
+
+check(
+  'proyecto nuevo escribe .mocks/project.yaml con el nombre de la carpeta',
+  (await readScratch(['.mocks', 'project.yaml'])).includes('name: scratch'),
+)
+check(
+  'proyecto nuevo crea scenarios/ y .gitignore del runtime',
+  (await settings.evaluate(async () => {
+    const root = await navigator.storage.getDirectory()
+    const mocks = await (
+      await root.getDirectoryHandle('scratch')
+    ).getDirectoryHandle('.mocks')
+    await mocks.getDirectoryHandle('scenarios')
+    return true
+  })) && (await readScratch(['.mocks', '.gitignore'])).includes('.runtime/'),
+)
+check(
+  'proyecto nuevo queda conectado y vacío',
+  (await settings.locator('#connection-status').getAttribute('class')).includes(
+    'status-pill--ok',
+  ) && (await settings.locator('#scenario-list .card').count()) === 0,
+)
+// idempotente: volver a pulsar sobre la misma carpeta la importa sin error
+await settings.locator('#new-project').click()
+await settings.waitForTimeout(1000)
+check(
+  'proyecto nuevo sobre carpeta ya inicializada la importa',
+  (await settings.locator('#connection-status').getAttribute('class')).includes(
+    'status-pill--ok',
+  ) && (await settings.locator('#access-banner').isHidden()),
 )
 
 // ───────────────────────── resumen

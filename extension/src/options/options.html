@@ -12,6 +12,9 @@
         <span class="header__title">mocker</span>
       </span>
       <span class="header__side">
+        <button class="button button--small" id="new-project">
+          New project
+        </button>
         <button class="button button--small" id="import-project">
           Import project
         </button>
@@ -77,8 +80,10 @@
       <div class="docs" id="view-docs" hidden>
         <h2>The <code>.mocks/</code> format</h2>
         <p>
-          Mocks live as YAML inside your app's repo, so they are versioned
-          with your branches and shared with a <code>git pull</code>. The
+          Mocks live as YAML in a folder of your choosing. Inside your app's
+          repo they are versioned with your branches and shared with a
+          <code>git pull</code>; for personal use, <strong>New project</strong>
+          initializes the layout in any empty folder — no repo needed. The
           layout:
         </p>
         <pre>
@@ -188,7 +193,7 @@ messages:
 
         <h3>For agents: .runtime/ logs</h3>
         <p>
-          With the project connected, mocker dumps the last 50 captured
+          With the project connected, mocker dumps the last 200 captured
           requests to <code>.mocks/.runtime/requests.json</code> and the last
           50 WebSocket frames (both directions) to
           <code>.mocks/.runtime/websockets.json</code>. An agent can edit the

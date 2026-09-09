@@ -3,12 +3,14 @@ import {
   updateWsMessages,
   deleteScenario as deleteScenarioFile,
   getAccessState,
+  createProjectDirectory,
   pickProjectDirectory,
   reloadSnapshot,
   requestAccess,
   updateProject,
   updateScenario as updateScenarioFile,
   type AccessState,
+  type WriteResult,
 } from '../lib/filesystem'
 import {
   EMPTY_STATE,
@@ -1129,7 +1131,17 @@ function renderConnection() {
 }
 
 async function importProject() {
-  const result = await pickProjectDirectory()
+  await connectWith(pickProjectDirectory)
+}
+
+// Uso personal: la carpeta elegida no tiene por qué ser un repo ni contener
+// nada, mocker le escribe el .mocks/ inicial.
+async function createProject() {
+  await connectWith(createProjectDirectory)
+}
+
+async function connectWith(pick: () => Promise<WriteResult>) {
+  const result = await pick()
   if (!result.ok && result.error !== 'Selection cancelled') {
     renderAccessBanner(result.error)
     return
@@ -1138,10 +1150,20 @@ async function importProject() {
   await render()
 }
 
+// Chrome puede denegar requestPermission sobre un handle restaurado sin
+// mostrar ningún prompt (WICG/file-system-access#289): cuando pasa, la única
+// salida es volver a elegir la carpeta con el picker, dentro del mismo clic
+// mientras la activación de usuario siga viva.
 async function reconnectProject() {
-  const granted = await requestAccess()
-  if (!granted) {
-    renderAccessBanner('Chrome denied access to the folder')
+  const access = await requestAccess()
+  if (!access.granted) {
+    const picked = await pickProjectDirectory()
+    if (!picked.ok) {
+      renderReconnectFallback(picked.error ?? access.error)
+      return
+    }
+    notifyConnected()
+    await render()
     return
   }
   notifyConnected()
@@ -1149,11 +1171,27 @@ async function reconnectProject() {
   await render()
 }
 
-// El background purga los logs de runtime la primera vez que ve la carpeta
-// accesible: se lo decimos al conectar para que la purga no caiga en mitad de
-// la sesión, cuando ya hay tráfico capturado.
+function renderReconnectFallback(errorMessage?: string) {
+  const banner = document.getElementById('access-banner')!
+  const text = document.getElementById('access-banner-text')!
+  const action = document.getElementById(
+    'access-banner-action',
+  ) as HTMLButtonElement
+
+  banner.hidden = false
+  text.textContent = `${errorMessage ?? 'Chrome did not restore access to the folder'} — pick the folder again to reconnect.`
+  action.textContent = 'Pick folder again'
+  action.onclick = () => void importProject()
+}
+
+// Al conectar, el background reescribe los logs de runtime con lo capturado
+// hasta ahora: así el proyecto recién creado (o recién reconectado) ya tiene
+// requests.json con el tráfico de la sesión, sin esperar a la próxima
+// petición ni arriesgarse a que la purga caiga después.
 function notifyConnected() {
-  void chrome.runtime.sendMessage({ type: 'mocker:sync' }).catch(() => {})
+  void chrome.runtime
+    .sendMessage({ type: 'mocker:sync', flushLogs: true })
+    .catch(() => {})
 }
 
 function renderAccessBanner(errorMessage?: string) {
@@ -1178,9 +1216,9 @@ function renderAccessBanner(errorMessage?: string) {
   } else {
     text.textContent =
       errorMessage ??
-      "No project imported. Choose your repo's .mocks folder (or the repo containing it)."
-    action.textContent = 'Import project'
-    action.onclick = () => void importProject()
+      "No project imported. Import an existing one (your repo's .mocks folder, or the repo containing it) or start a new project in any folder."
+    action.textContent = 'New project'
+    action.onclick = () => void createProject()
   }
 }
 
@@ -1328,6 +1366,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 document.getElementById('import-project')!.addEventListener('click', () => {
   void importProject()
+})
+
+document.getElementById('new-project')!.addEventListener('click', () => {
+  void createProject()
 })
 
 document.getElementById('connection-status')!.addEventListener('click', () => {

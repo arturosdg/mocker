@@ -2,7 +2,8 @@
 name: mocker
 description: >-
   Mock API responses in the browser through the mocker Chrome extension by
-  editing YAML files in the repo's .mocks/ directory and verifying matches via
+  editing YAML files in the project's .mocks/ folder (any folder, not
+  necessarily a repo) and verifying matches via
   .mocks/.runtime/requests.json. Use when the user asks to mock the network,
   fake or intercept HTTP calls, return a fixed response for an endpoint,
   simulate a backend error (500, 401, timeout/delay), create or edit mock
@@ -13,17 +14,39 @@ description: >-
 # mocker — file-driven network mocks
 
 mocker is a Chrome extension that intercepts `fetch`/XHR and serves responses
-defined in YAML inside the app's repo. Your interface as an agent is
-**files**: you write scenarios under `.mocks/` and read the request log at
+defined in YAML inside a `.mocks/` folder the user connects from the
+extension — usually the app's repo, but any folder works. Your interface as an
+agent is **files**: you write scenarios under `.mocks/` and read the log at
 `.mocks/.runtime/requests.json`. There is no CLI and no server.
 
 ## Locate the project
 
-Look for a `.mocks/` directory with `project.yaml` at the repo root. If it
-does not exist, create it (and suggest adding `.mocks/.runtime/` to the
-`.gitignore`). The user must have the extension installed and the project
-imported (Settings → Import project); if the runtime log never updates, ask
-them to check the green status pill in the popup.
+A mock project is any folder with `project.yaml` inside a `.mocks/`
+directory — it does **not** have to be a git repo or the folder you are
+working in. Resolve it in this order and stop at the first hit:
+
+1. `.mocks/project.yaml` in the working directory (or the repo root above
+   it). This is the usual case when mocking the app you are developing.
+2. The path saved in `~/.mocker/agent.json`
+   (`{ "projectPath": "/abs/path/to/.mocks" }`) — check the directory still
+   exists.
+3. Ask the user: *"which folder did you connect in the mocker extension?
+   (absolute path)"*. Chrome's File System Access API only gives the
+   extension the folder **name**, never its path, so the extension cannot
+   tell you and there is nothing to look up — asking is the only way.
+   **Never scan the disk hunting for `.mocks/` folders.** Save the answer to
+   `~/.mocker/agent.json` (append `.mocks` if the user gave you the parent
+   folder) and reuse it from then on.
+
+If the folder has no `project.yaml` yet, either create the layout yourself
+(`project.yaml` with a `name`, an empty `scenarios/`, and a `.mocks/.gitignore`
+containing `.runtime/`) or tell the user to click **New project** in the
+extension settings and pick that folder — both produce the same result.
+
+Before writing mocks, check the setup once: the extension must be installed
+and the folder connected (green pill in the popup or the settings header). If
+`.runtime/requests.json` is missing, the folder was never connected — say so
+instead of guessing.
 
 ## File formats
 
@@ -130,7 +153,7 @@ in `data`:
 
 ## Verification: .mocks/.runtime/requests.json
 
-Last 50 requests from tabs with mocking enabled:
+Last 200 requests from tabs with mocking enabled:
 
 ```json
 {
@@ -164,7 +187,7 @@ Last 50 requests from tabs with mocking enabled:
 
 ## Verification: .mocks/.runtime/websockets.json
 
-Last 50 WebSocket frames from tabs with mocking enabled, both directions:
+Last 200 WebSocket frames from tabs with mocking enabled, both directions:
 
 ```json
 {
@@ -185,6 +208,28 @@ Last 50 WebSocket frames from tabs with mocking enabled, both directions:
   messages in `websockets.yaml`); `"out"` = sent by the page (subscribe
   commands here reveal the channel names the app listens to).
 - Frames injected by mocker itself are not captured.
+
+## Setup, when something is missing
+
+- **The extension is not installed**: it is loaded unpacked from the repo —
+  `git clone` the repo, `npm install && npm run build`, then
+  `chrome://extensions` → developer mode → **Load unpacked** →
+  `extension/dist/`. Then Settings → **New project** (any folder) or
+  **Import project** (an existing `.mocks/`).
+- **This skill is not installed** (the user is reading it from a clone):
+  the install is two commands the **user** types in an interactive Claude
+  Code terminal — you have no tool for them, and copying `SKILL.md` into
+  `~/.claude/skills/` by hand is not the install path:
+
+  ```
+  /plugin marketplace add arturosdg/mocker
+  /plugin install mocker@mocker
+  ```
+
+- **The folder is connected but the log is empty**: Chrome expires the folder
+  permission every browser session — the popup shows an amber pill and one
+  click reconnects. Connecting mid-session dumps the traffic already captured
+  into the log, so there is nothing to re-navigate.
 
 ## Common mistakes
 

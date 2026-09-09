@@ -220,18 +220,20 @@ function renderConnection() {
     status.className = 'status-pill status-pill--warn status-pill--clickable'
   } else {
     status.textContent = '⚠'
-    status.title = 'No project — click to import your .mocks folder'
+    status.title = 'No project — click to open Settings and pick a folder'
     status.className = 'status-pill status-pill--error status-pill--clickable'
   }
 }
 
 async function handleConnectionClick() {
   if (accessState === 'needs-permission') {
-    const granted = await requestAccess()
+    const { granted } = await requestAccess()
     if (granted) {
-      // Que el background purgue los logs de runtime ya, no en la próxima
-      // alarma, cuando la sesión ya tendría tráfico capturado.
-      void chrome.runtime.sendMessage({ type: 'mocker:sync' }).catch(() => {})
+      // Que el background vuelque los logs de runtime ya, no en la próxima
+      // alarma: el tráfico capturado antes de reconectar entra en el log.
+      void chrome.runtime
+        .sendMessage({ type: 'mocker:sync', flushLogs: true })
+        .catch(() => {})
       await reloadSnapshot()
       await render()
       return

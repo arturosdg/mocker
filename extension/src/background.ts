@@ -1,5 +1,4 @@
 import {
-  clearRuntimeLogs,
   getAccessState,
   reloadSnapshot,
   writeRuntimeRequestsLog,
@@ -56,15 +55,30 @@ chrome.storage.onChanged.addListener((changes, area) => {
 })
 void updateAllActionIcons()
 
-async function syncFromDisk() {
+// Al ver la carpeta accesible por primera vez en esta sesión de navegador,
+// el log en disco se reescribe con lo capturado hasta ahora: al arrancar el
+// navegador storage.session está vacío y equivale a purgarlo, pero si la
+// carpeta se conecta a mitad de sesión (proyecto nuevo, reconexión, cambio de
+// proyecto) el tráfico ya capturado aterriza en el log sin esperar a la
+// siguiente petición.
+async function syncFromDisk(forceLogFlush = false) {
   if ((await getAccessState()) !== 'granted') return
   const { runtimeLogsCleared } =
     await chrome.storage.session.get('runtimeLogsCleared')
-  if (!runtimeLogsCleared) {
-    await clearRuntimeLogs()
+  if (!runtimeLogsCleared || forceLogFlush) {
+    await flushRuntimeLogs()
     await chrome.storage.session.set({ runtimeLogsCleared: true })
   }
   await reloadSnapshot()
+}
+
+async function flushRuntimeLogs() {
+  const { requests, wsFrames } = await chrome.storage.session.get([
+    'requests',
+    'wsFrames',
+  ])
+  await writeRuntimeRequestsLog((requests as unknown[] | undefined) ?? [])
+  await writeRuntimeWsFramesLog((wsFrames as unknown[] | undefined) ?? [])
 }
 
 chrome.alarms.create('mocker-sync', { periodInMinutes: 0.5 })
@@ -75,7 +89,7 @@ chrome.runtime.onStartup.addListener(() => void syncFromDisk())
 chrome.runtime.onInstalled.addListener(() => void syncFromDisk())
 void syncFromDisk()
 
-const MAX_CAPTURED_REQUESTS = 50
+const MAX_CAPTURED_REQUESTS = 200
 
 let capturedRequestsQueue: Promise<void> = Promise.resolve()
 
@@ -121,7 +135,7 @@ async function incrementMatchedCount(scenarioId: string) {
 
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === 'mocker:sync') {
-    void syncFromDisk()
+    void syncFromDisk(message.flushLogs === true)
     return
   }
 

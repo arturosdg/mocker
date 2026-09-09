@@ -65,11 +65,27 @@ export async function getAccessState(): Promise<AccessState> {
   return permission === 'granted' ? 'granted' : 'needs-permission'
 }
 
-export async function requestAccess(): Promise<boolean> {
+export interface AccessRequestResult {
+  granted: boolean
+  error?: string
+}
+
+export async function requestAccess(): Promise<AccessRequestResult> {
   const handle = await loadDirectoryHandle().catch(() => undefined)
-  if (!handle) return false
-  const permission = await handle.requestPermission({ mode: 'readwrite' })
-  return permission === 'granted'
+  if (!handle) return { granted: false, error: 'No project imported' }
+  try {
+    const permission = await handle.requestPermission({ mode: 'readwrite' })
+    if (permission === 'granted') return { granted: true }
+    return {
+      granted: false,
+      error: 'Chrome did not restore access to the folder',
+    }
+  } catch (error) {
+    return {
+      granted: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
 }
 
 async function resolveMocksDirectory(
@@ -90,27 +106,93 @@ async function resolveMocksDirectory(
   }
 }
 
-export async function pickProjectDirectory(): Promise<WriteResult> {
-  let picked: FileSystemDirectoryHandle
-  try {
-    picked = await window.showDirectoryPicker({
-      id: 'mocker-project',
-      mode: 'readwrite',
-    })
-  } catch {
-    return { ok: false, error: 'Selection cancelled' }
-  }
+type PickedDirectory =
+  | { handle: FileSystemDirectoryHandle }
+  | { failure: WriteResult }
 
-  const mocksDirectory = await resolveMocksDirectory(picked)
+async function openDirectoryPicker(): Promise<PickedDirectory> {
+  const storedHandle = await loadDirectoryHandle().catch(() => undefined)
+  try {
+    return {
+      handle: await window.showDirectoryPicker({
+        id: 'mocker-project',
+        mode: 'readwrite',
+        ...(storedHandle ? { startIn: storedHandle } : {}),
+      }),
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { failure: { ok: false, error: 'Selection cancelled' } }
+    }
+    return {
+      failure: {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    }
+  }
+}
+
+async function connectTo(
+  mocksDirectory: FileSystemDirectoryHandle,
+): Promise<WriteResult> {
+  await saveDirectoryHandle(mocksDirectory)
+  return reloadSnapshot()
+}
+
+export async function pickProjectDirectory(): Promise<WriteResult> {
+  const picked = await openDirectoryPicker()
+  if ('failure' in picked) return picked.failure
+
+  const mocksDirectory = await resolveMocksDirectory(picked.handle)
   if (!mocksDirectory) {
     return {
       ok: false,
       error:
-        'The chosen folder has no project.yaml and no .mocks/ subfolder containing one',
+        'The chosen folder has no project.yaml and no .mocks/ subfolder containing one — use New project to initialize it',
     }
   }
-  await saveDirectoryHandle(mocksDirectory)
-  return reloadSnapshot()
+  return connectTo(mocksDirectory)
+}
+
+// Un proyecto de mocks no necesita repo ni git: basta una carpeta cualquiera
+// donde escribir el .mocks/ inicial. Si la elegida ya tiene proyecto la
+// importa, para que el botón sea idempotente.
+export async function createProjectDirectory(): Promise<WriteResult> {
+  const picked = await openDirectoryPicker()
+  if ('failure' in picked) return picked.failure
+
+  const existing = await resolveMocksDirectory(picked.handle)
+  if (existing) return connectTo(existing)
+
+  try {
+    return connectTo(await scaffoldProject(picked.handle))
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Could not initialize the project: ${error instanceof Error ? error.message : error}`,
+    }
+  }
+}
+
+async function scaffoldProject(
+  picked: FileSystemDirectoryHandle,
+): Promise<FileSystemDirectoryHandle> {
+  const isMocksItself = picked.name === '.mocks'
+  const mocksDirectory = isMocksItself
+    ? picked
+    : await picked.getDirectoryHandle('.mocks', { create: true })
+
+  await writeFile(
+    mocksDirectory,
+    'project.yaml',
+    stringify({ name: isMocksItself ? 'mocks' : picked.name }),
+  )
+  await mocksDirectory.getDirectoryHandle('scenarios', { create: true })
+  // el log de runtime es local a cada sesión de navegador: nunca se versiona,
+  // y el .gitignore vive dentro para que valga también sin repo alrededor
+  await writeFile(mocksDirectory, '.gitignore', '.runtime/\n')
+  return mocksDirectory
 }
 
 async function getState(): Promise<MockerState> {
@@ -384,11 +466,6 @@ export function writeRuntimeRequestsLog(requests: unknown[]) {
 
 export function writeRuntimeWsFramesLog(frames: unknown[]) {
   return writeRuntimeFile('websockets.json', { frames })
-}
-
-export async function clearRuntimeLogs() {
-  await writeRuntimeFile('requests.json', { requests: [] })
-  await writeRuntimeFile('websockets.json', { frames: [] })
 }
 
 export function updateProject(project: Project): Promise<WriteResult> {
