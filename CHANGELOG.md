@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/arturosdg/mocker/compare/v1.1.2...v1.2.0) (2026-09-09)
+
+
+### Features
+
+* collapse mock lists in read mode and responses in edit mode ([#50](https://github.com/arturosdg/mocker/issues/50)) ([7ee8f07](https://github.com/arturosdg/mocker/commit/7ee8f077407e7a4d2c33aeb5d28dad64071670fc))
+* folder-first mock projects — New project, log flush on connect ([#48](https://github.com/arturosdg/mocker/issues/48)) ([e61818a](https://github.com/arturosdg/mocker/commit/e61818aa119a76baca9b70b6766443aaa1c45b09))
+
 ## [1.1.2](https://github.com/arturosdg/mocker/compare/v1.1.1...v1.1.2) (2026-09-08)
 
 
