@@ -110,7 +110,7 @@ manually with `/mocker`.
 
 An agent works on the same files: it edits the `.mocks/` YAML with its normal
 tools and the extension picks the changes up on its own. To close the loop
-without a browser, mocker dumps the last 50 captured requests to
+without a browser, mocker dumps the last 200 captured requests to
 `.mocks/.runtime/requests.json` (`{ updatedAt, requests: [...] }`); each
 entry carries the call made (method, url, `requestBody`), the response
 received (`status`, `body`, both capped at 32KB) and, when mocker intercepted

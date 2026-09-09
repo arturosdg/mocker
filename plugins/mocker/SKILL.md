@@ -130,7 +130,7 @@ in `data`:
 
 ## Verification: .mocks/.runtime/requests.json
 
-Last 50 requests from tabs with mocking enabled:
+Last 200 requests from tabs with mocking enabled:
 
 ```json
 {
@@ -164,7 +164,7 @@ Last 50 requests from tabs with mocking enabled:
 
 ## Verification: .mocks/.runtime/websockets.json
 
-Last 50 WebSocket frames from tabs with mocking enabled, both directions:
+Last 200 WebSocket frames from tabs with mocking enabled, both directions:
 
 ```json
 {

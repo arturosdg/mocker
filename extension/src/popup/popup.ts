@@ -227,7 +227,7 @@ function renderConnection() {
 
 async function handleConnectionClick() {
   if (accessState === 'needs-permission') {
-    const granted = await requestAccess()
+    const { granted } = await requestAccess()
     if (granted) {
       // Que el background purgue los logs de runtime ya, no en la próxima
       // alarma, cuando la sesión ya tendría tráfico capturado.

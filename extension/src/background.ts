@@ -75,7 +75,7 @@ chrome.runtime.onStartup.addListener(() => void syncFromDisk())
 chrome.runtime.onInstalled.addListener(() => void syncFromDisk())
 void syncFromDisk()
 
-const MAX_CAPTURED_REQUESTS = 50
+const MAX_CAPTURED_REQUESTS = 200
 
 let capturedRequestsQueue: Promise<void> = Promise.resolve()
 

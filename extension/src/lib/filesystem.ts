@@ -65,11 +65,27 @@ export async function getAccessState(): Promise<AccessState> {
   return permission === 'granted' ? 'granted' : 'needs-permission'
 }
 
-export async function requestAccess(): Promise<boolean> {
+export interface AccessRequestResult {
+  granted: boolean
+  error?: string
+}
+
+export async function requestAccess(): Promise<AccessRequestResult> {
   const handle = await loadDirectoryHandle().catch(() => undefined)
-  if (!handle) return false
-  const permission = await handle.requestPermission({ mode: 'readwrite' })
-  return permission === 'granted'
+  if (!handle) return { granted: false, error: 'No project imported' }
+  try {
+    const permission = await handle.requestPermission({ mode: 'readwrite' })
+    if (permission === 'granted') return { granted: true }
+    return {
+      granted: false,
+      error: 'Chrome did not restore access to the folder',
+    }
+  } catch (error) {
+    return {
+      granted: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
 }
 
 async function resolveMocksDirectory(
@@ -91,14 +107,22 @@ async function resolveMocksDirectory(
 }
 
 export async function pickProjectDirectory(): Promise<WriteResult> {
+  const storedHandle = await loadDirectoryHandle().catch(() => undefined)
   let picked: FileSystemDirectoryHandle
   try {
     picked = await window.showDirectoryPicker({
       id: 'mocker-project',
       mode: 'readwrite',
+      ...(storedHandle ? { startIn: storedHandle } : {}),
     })
-  } catch {
-    return { ok: false, error: 'Selection cancelled' }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { ok: false, error: 'Selection cancelled' }
+    }
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
 
   const mocksDirectory = await resolveMocksDirectory(picked)

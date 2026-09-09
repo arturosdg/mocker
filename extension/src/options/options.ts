@@ -1138,15 +1138,38 @@ async function importProject() {
   await render()
 }
 
+// Chrome puede denegar requestPermission sobre un handle restaurado sin
+// mostrar ningún prompt (WICG/file-system-access#289): cuando pasa, la única
+// salida es volver a elegir la carpeta con el picker, dentro del mismo clic
+// mientras la activación de usuario siga viva.
 async function reconnectProject() {
-  const granted = await requestAccess()
-  if (!granted) {
-    renderAccessBanner('Chrome denied access to the folder')
+  const access = await requestAccess()
+  if (!access.granted) {
+    const picked = await pickProjectDirectory()
+    if (!picked.ok) {
+      renderReconnectFallback(picked.error ?? access.error)
+      return
+    }
+    notifyConnected()
+    await render()
     return
   }
   notifyConnected()
   await reloadSnapshot()
   await render()
+}
+
+function renderReconnectFallback(errorMessage?: string) {
+  const banner = document.getElementById('access-banner')!
+  const text = document.getElementById('access-banner-text')!
+  const action = document.getElementById(
+    'access-banner-action',
+  ) as HTMLButtonElement
+
+  banner.hidden = false
+  text.textContent = `${errorMessage ?? 'Chrome did not restore access to the folder'} — pick the folder again to reconnect.`
+  action.textContent = 'Pick folder again'
+  action.onclick = () => void importProject()
 }
 
 // El background purga los logs de runtime la primera vez que ve la carpeta
