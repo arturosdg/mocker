@@ -1,9 +1,10 @@
 # <img src="extension/icons/icon-48.png" alt="" width="28" align="top" /> Mocker
 
-Scenario-based network mocking driven by files in your repo. Mock scenarios
-live as YAML in `.mocks/` inside your app's repo (versioned with your
-branches, shared through git); the Chrome extension reads and writes that
-folder directly via File System Access — no external processes.
+Scenario-based network mocking driven by files. Mock scenarios live as YAML in
+a `.mocks/` folder: inside your app's repo they are versioned with your
+branches and shared through git, but any folder works — **New project**
+initializes one wherever you point it. The Chrome extension reads and writes
+that folder directly via File System Access — no external processes.
 
 ```
 .mocks/ (in your app's repo)  ←fs→  extension (Chrome MV3)
@@ -82,9 +83,14 @@ npm run build
 
 1. Load the extension in Chrome: `chrome://extensions` → developer mode →
    "Load unpacked" → `extension/dist/`.
-2. Open the settings page and click **Import project**: choose your repo's
-   `.mocks/` folder (or the repo containing it). That loads the project and
-   all its scenarios.
+2. Open the settings page and connect a folder:
+   - **Import project**: choose your repo's `.mocks/` folder (or the repo
+     containing it). Loads the project and all its scenarios.
+   - **New project**: choose any folder — including an empty one, with no repo
+     around it — and mocker writes the initial `.mocks/` there
+     (`project.yaml` named after the folder, `scenarios/`, and a `.gitignore`
+     for `.runtime/`). On a folder that already has a project it just imports
+     it.
 3. Open the popup and turn scenarios on with their switches.
 
 Chrome expires the folder permission on every new browser session: the
@@ -104,9 +110,16 @@ Two-command install, inside Claude Code:
 /plugin install mocker@mocker
 ```
 
-(Works with the private repo as long as you have git access.) From then on
-the agent activates the skill whenever you ask it to mock the network, or
-manually with `/mocker`.
+(Works with the private repo as long as you have git access.) Those two
+commands are typed by **you** in an interactive Claude Code terminal — an
+agent has no tool for them, and copying `SKILL.md` by hand is not the install
+path. From then on the agent activates the skill whenever you ask it to mock
+the network, or manually with `/mocker`.
+
+When the mocks folder is not the project the agent is working in, it cannot
+find it on its own: File System Access gives the extension only the folder
+*name*, never its path. The skill asks you for the absolute path once and
+remembers it in `~/.mocker/agent.json`.
 
 An agent works on the same files: it edits the `.mocks/` YAML with its normal
 tools and the extension picks the changes up on its own. To close the loop
@@ -120,8 +133,10 @@ material for new mocks. WebSocket frames get the same treatment in
 `.mocks/.runtime/websockets.json` (`{ updatedAt, frames: [...] }`), captured
 in both directions (`direction: "in" | "out"`) — outgoing subscribe commands
 reveal the channels the app listens to, incoming pushes are raw material for
-saved messages. Both logs are purged at the start of each browser session.
-Add `.mocks/.runtime/` to the repo's `.gitignore`.
+saved messages. Both logs are purged at the start of each browser session, and connecting a
+folder mid-session (a new project, a reconnect) dumps the traffic already
+captured into them — you do not have to re-navigate. Add `.mocks/.runtime/` to
+the repo's `.gitignore` (**New project** writes it for you).
 
 ## WebSocket pushes (Centrifugo-friendly)
 
@@ -185,8 +200,9 @@ clobbering your edit.
 
 ## Tests
 
-`npm run e2e` builds the extension and runs the end-to-end battery (50
-checks) against a real Chromium: import and connection states, matching
+`npm run e2e` builds the extension and runs the end-to-end battery (78
+checks) against a real Chromium: import, project creation and connection
+states, matching
 (pathname, query, fragment, wildcard, variables), fetch/XHR interception with
 delay and precedence, scenario/mock/domain toggles, captures and
 add-as-mock, the runtime log, editing/CRUD/validation/archiving, drag
