@@ -210,10 +210,16 @@ await popup.screenshot({
   clip: { x: 0, y: 0, width: 400, height: popupHeight },
 })
 
-// ── settings, scenarios in read mode
+// ── settings, scenarios in read mode (one scenario with its mocks open, the
+// rest collapsed as they come by default)
 await settings.bringToFront()
 await settings.reload()
 await settings.waitForTimeout(900)
+await settings
+  .locator('#scenario-list .card--read .card__mocks-title--toggle')
+  .first()
+  .click()
+await settings.waitForTimeout(300)
 await settings.screenshot({ path: path.join(docsPath, 'settings.png') })
 
 // ── scenario editor
@@ -222,6 +228,11 @@ await settings
   .getByRole('button', { name: 'Edit', exact: true })
   .click()
 await settings.waitForTimeout(500)
+await settings
+  .locator('[data-scenario-id="save-error"] .mock .card__mocks-title--toggle')
+  .first()
+  .click()
+await settings.waitForTimeout(300)
 await settings
   .locator('[data-scenario-id="save-error"]')
   .scrollIntoViewIfNeeded()
