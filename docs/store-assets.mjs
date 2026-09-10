@@ -338,6 +338,9 @@ const shot = (name) =>
 const logo = `data:image/png;base64,${readFileSync(
   path.resolve(docsPath, '../extension/icons/icon-128.png'),
 ).toString('base64')}`
+const logoSvg = `data:image/svg+xml;base64,${readFileSync(
+  path.resolve(docsPath, '../extension/icons/icon.svg'),
+).toString('base64')}`
 
 const logEntry = (entry) => ({
   method: entry.method,
@@ -537,8 +540,8 @@ const panels = [
       <div class="panel" style="width:1280px;height:800px;padding:56px 64px 0;">
         <div class="brand"><img src="${logo}" alt="" /><span>mocker</span></div>
         <div class="copy" style="margin-top:34px;">
-          <h1 class="headline">Network mocks that live<br /><em>in your repo</em>.</h1>
-          <p class="subline">Scenarios are YAML files in <code>.mocks/</code>: versioned with your branches, shared with a git pull, edited from the extension or by your coding agent.</p>
+          <h1 class="headline">Fake any API response,<br /><em>from a simple file</em>.</h1>
+          <p class="subline">A scenario is a YAML file: turn it on, reload the page, and every request it covers answers the way you wrote it. No proxy, no dev-server flags, no throwaway code in your app.</p>
         </div>
         <div class="frame" style="margin:40px auto 0;width:900px;height:358px;">
           <img src="${shot('settings.png')}" alt="" />
@@ -616,12 +619,23 @@ const panels = [
       <div class="panel" style="width:1280px;height:800px;padding:56px 64px;">
         <div class="brand"><img src="${logo}" alt="" /><span>mocker</span></div>
         <div class="copy" style="margin-top:34px;">
-          <h1 class="headline">Your coding agent reads<br />the <em>same files</em>.</h1>
-          <p class="subline">Mocker writes every captured request to a log inside the folder, so an agent can see what the app called, write the YAML and check that its mock matched — no browser, no screenshots.</p>
+          <h1 class="headline">Let your AI agent<br /><em>write the mocks</em>.</h1>
+          <p class="subline">Ask for it in plain words. Mocker writes every captured request to a log next to your scenarios, so the agent sees what the app really called, writes the YAML and checks that its mock matched — no browser, no screenshots to paste.</p>
         </div>
         <div class="code" style="margin-top:34px;">
           <span class="path">.mocks/.runtime/requests.json</span>${highlightJson(logJson)}
         </div>
+      </div>`,
+  },
+  {
+    name: 'store-icon-128.png',
+    width: 128,
+    height: 128,
+    transparent: true,
+    body: `
+      <style>body { background: transparent; }</style>
+      <div style="width:128px;height:128px;display:flex;align-items:center;justify-content:center;">
+        <img src="${logoSvg}" alt="" style="width:96px;height:96px;" />
       </div>`,
   },
   {
@@ -671,7 +685,10 @@ for (const panel of panels) {
     `<html><head><meta charset="utf-8" /><style>${STYLE}</style></head><body>${panel.body}</body></html>`,
   )
   await page.waitForTimeout(500)
-  await page.screenshot({ path: path.join(storePath, panel.name) })
+  await page.screenshot({
+    path: path.join(storePath, panel.name),
+    ...(panel.transparent ? { omitBackground: true } : {}),
+  })
   await page.close()
 }
 await browser.close()

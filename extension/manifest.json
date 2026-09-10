@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Mocker",
   "version": "1.1.2",
-  "description": "Scenario-based network mocking driven by files in your repo",
+  "description": "Mock any API response from simple YAML files — on your own or with your AI coding agent. No proxy, no code changes.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

@@ -14,11 +14,16 @@ compilada, proyecto demo real, tráfico real).
 **Item name** (lo toma del `manifest.json`, máx. 75 — hoy `Mocker`, correcto
 tal cual).
 
-**Summary** (máx. 132 caracteres — 119):
+**Summary**: no se escribe en el formulario, la store lo lee del campo
+`description` del `manifest.json` (máx. 132). Hoy, tras el cambio, es este
+(115 caracteres):
 
 ```
-Scenario-based network mocking driven by YAML files in your repo. Intercepts fetch and XHR — no proxy, no code changes.
+Mock any API response from simple YAML files — on your own or with your AI coding agent. No proxy, no code changes.
 ```
+
+Para cambiarlo hay que tocar `extension/manifest.json` y volver a publicar,
+no basta con editar la ficha.
 
 **Category**: Developer Tools
 **Language**: English
@@ -26,9 +31,9 @@ Scenario-based network mocking driven by YAML files in your repo. Intercepts fet
 **Detailed description** (máx. 16.000):
 
 ```
-Mocker serves fake API responses to the page you are developing, from YAML files that live in your own repo.
+Mocker serves fake API responses to the page you are developing, from simple YAML files on your own disk. No account, no proxy to run, no dev-server flag, no branch of throwaway code in your app.
 
-A scenario is a file. Turn it on from the toolbar, reload the page, and every request it covers answers with the status, body and delay you wrote — no proxy to run, no dev-server flag, no branch of throwaway code in your app.
+A scenario is a file. Turn it on from the toolbar, reload the page, and every request it covers answers with the status, body and delay you wrote.
 
 WHAT YOU CAN DO
 
@@ -41,15 +46,19 @@ WHAT YOU CAN DO
 • Fire saved WebSocket pushes on demand, wrapped in the Centrifugo envelope for a channel or raw for any WebSocket app.
 • Switch a whole domain off when you want the real backend back — the toolbar icon greys out so you always know.
 
+MADE TO SHARE WITH YOUR AI AGENT
+
+Because a mock is just a file, an AI coding agent can write it for you: "mock the items endpoint as empty", "make the save fail with a 500", and the scenario appears in the extension without a reload or an import.
+
+The loop closes without a browser. Mocker writes the requests it sees to a log next to your scenarios — method, URL, request body, response status and body, and, when a mock matched, which scenario served it. Your agent reads that log to see what the app really called, writes the YAML, and checks that its mock matched. No screenshots to paste, no copying payloads by hand.
+
+The repo ships a Claude Code skill that teaches an agent the whole workflow (file format, URL matching, verification), so it gets it right on the first try.
+
 FILES, NOT A DATABASE
 
-Everything mocker knows lives in a folder you pick: project.yaml plus one YAML file per scenario. Keep that folder in your repo and your mocks are versioned with your branches, reviewed in pull requests and shared with a git pull. Keep it anywhere else — Downloads, a scratch directory — and mocker works exactly the same: "New project" initializes the layout in any empty folder.
+Everything mocker knows lives in a folder you pick: one project file plus one YAML file per scenario. "New project" initializes that folder anywhere — an empty directory is enough. Put it inside your project and your mocks are versioned with your branches, reviewed in pull requests and shared with a git pull; keep it anywhere else and mocker works exactly the same.
 
 Saving from the extension writes the YAML; editing the YAML in your editor shows up in the extension. Nothing is hidden in browser storage.
-
-BUILT FOR CODING AGENTS TOO
-
-Mocker writes the requests it sees to .mocks/.runtime/requests.json inside the same folder: method, URL, request body, response status and body, and — when a mock matched — which scenario served it. An agent can read that log, write the YAML for a new mock and verify that it matched, without a browser or a screenshot. The companion Claude Code skill in the repo teaches the whole workflow.
 
 MOCKED REQUESTS ARE NEVER A MYSTERY
 
@@ -57,8 +66,8 @@ Every served mock logs to the page console with the original URL intact, the sta
 
 HOW TO START
 
-1. Open Settings and click "New project" to initialize a folder, or "Import project" to pick an existing .mocks/ folder.
-2. Create a scenario, add a mock (method, URL, status, body).
+1. Open Settings and click "New project" to initialize a folder, or "Import project" to pick one that already has scenarios.
+2. Create a scenario, add a mock (method, URL, status, body) — or ask your agent to write it.
 3. Turn the scenario on in the popup and reload your app.
 
 WHAT IT DOES NOT DO
@@ -74,7 +83,7 @@ Open source: https://github.com/arturosdg/mocker
 
 | Asset | Requisito | Fichero |
 | --- | --- | --- |
-| Store icon | 128×128 PNG | `extension/icons/icon-128.png` |
+| Store icon | 128×128 PNG, arte de 96×96 con margen transparente | `docs/store/store-icon-128.png` |
 | Screenshot 1 | 1280×800 | `docs/store/store-1-scenarios.png` |
 | Screenshot 2 | 1280×800 | `docs/store/store-2-popup.png` |
 | Screenshot 3 | 1280×800 | `docs/store/store-3-editor.png` |
@@ -82,6 +91,12 @@ Open source: https://github.com/arturosdg/mocker
 | Screenshot 5 | 1280×800 | `docs/store/store-5-agents.png` |
 | Small promo tile | 440×280 | `docs/store/promo-small-440x280.png` |
 | Marquee promo tile | 1400×560 | `docs/store/promo-marquee-1400x560.png` |
+
+El icono de la store no es el mismo fichero que el de la extensión:
+`extension/icons/icon-128.png` va a sangre porque en la barra de
+herramientas se ve diminuto, mientras que la store pide el arte a 96×96
+centrado en un lienzo de 128 con el resto transparente. `store-icon-128.png`
+se genera del `icon.svg` con ese margen.
 
 El orden importa: la primera captura es la que sale en los listados y en la
 tarjeta de búsqueda. La marquee solo se usa si Google te destaca, pero se
