@@ -10,7 +10,8 @@
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "e2e": "npm run build -w extension && node e2e/run.mjs",
-    "screenshots": "npm run build -w extension && node docs/screenshots.mjs"
+    "screenshots": "npm run build -w extension && node docs/screenshots.mjs",
+    "store-assets": "npm run build -w extension && node docs/store-assets.mjs"
   },
   "allowScripts": {
     "esbuild@0.24.2": true
