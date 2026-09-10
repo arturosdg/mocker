@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/arturosdg/mocker/compare/v1.2.0...v1.2.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* package summary shown in the Chrome Web Store ([#52](https://github.com/arturosdg/mocker/issues/52)) ([d91ab00](https://github.com/arturosdg/mocker/commit/d91ab00e57230f4d8c37d2f98f95a1d196868efa))
+
 ## [1.2.0](https://github.com/arturosdg/mocker/compare/v1.1.2...v1.2.0) (2026-09-09)
 
 
