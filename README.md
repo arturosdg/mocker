@@ -221,6 +221,13 @@ the two promo tiles in `docs/store/` — and
 summary, description, permission justifications, privacy policy and reviewer
 instructions.
 
+## Privacy
+
+Mocker has no backend, no account and no telemetry: the traffic it captures is
+written only to the folder you picked and wiped at the start of every browser
+session. The details, and the policy the Chrome Web Store links to, are in
+[`PRIVACY.md`](PRIVACY.md).
+
 ## Releases
 
 Versioning is automated with [release-please](https://github.com/googleapis/release-please):

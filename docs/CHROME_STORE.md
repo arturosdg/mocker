@@ -146,30 +146,17 @@ Y las tres certificaciones: no vendemos datos a terceros, no los usamos para
 fines ajenos al propósito único, y no los usamos para determinar solvencia ni
 para préstamos.
 
-**Privacy policy URL**: Chrome la exige en cuanto declaras permisos que
-tocan datos del usuario. Texto listo para publicar (por ejemplo como
-`PRIVACY.md` en el repo, enlazando a su URL de GitHub):
+**Privacy policy URL** (Chrome la exige en cuanto declaras permisos que tocan
+datos del usuario):
 
 ```
-Privacy policy — Mocker
-
-Mocker does not collect, store or transmit personal data.
-
-The extension runs entirely on your machine. It has no backend, no account
-system and no analytics or telemetry of any kind.
-
-What it reads: the network requests made by the tabs where you enable it, and
-the YAML files in the folder you explicitly select through Chrome's folder
-picker.
-
-What it writes: the YAML files in that same folder, and a log of the requests
-it captured (.mocks/.runtime/requests.json and websockets.json) inside it.
-That log is cleared at the start of every browser session.
-
-Where it goes: nowhere. No data leaves your device.
-
-Questions: https://github.com/arturosdg/mocker/issues
+https://github.com/arturosdg/mocker/blob/main/PRIVACY.md
 ```
+
+Vive en [`PRIVACY.md`](../PRIVACY.md) en la raíz del repo, que es público, así
+que la URL es accesible sin sesión — requisito del revisor. Si algún día el
+repo pasa a privado hay que moverla a otro sitio (GitHub Pages o una página
+propia) antes de que la revisión la compruebe.
 
 ---
 
