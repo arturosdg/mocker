@@ -576,7 +576,7 @@ const panels = [
         <div class="brand"><img src="${logo}" alt="" /><span>mocker</span></div>
         <div class="copy" style="margin-top:34px;">
           <h1 class="headline">A form for every mock —<br /><em>status, delay, body</em>.</h1>
-          <p class="subline">Method, URL, status code, delay and response, with live validation of <code>{{variables}}</code> and drag to reorder. Saving writes the YAML; you see the diff in git status.</p>
+          <p class="subline">Method, URL, status code, delay and response, with live validation of <code>{{variables}}</code> and drag to reorder. Saving writes the file; editing the file shows up here.</p>
         </div>
         <div class="frame" style="margin:34px auto 0;width:960px;height:460px;">
           <img src="${shot('editor.png')}" alt="" />
@@ -591,12 +591,12 @@ const panels = [
       <div class="panel" style="width:1280px;height:800px;padding:56px 64px;">
         <div class="brand"><img src="${logo}" alt="" /><span>mocker</span></div>
         <div class="copy" style="margin-top:30px;">
-          <h1 class="headline">One file per scenario,<br /><em>reviewed like code</em>.</h1>
-          <p class="subline">No hidden database: a scenario is a YAML file you can diff, branch and share. Every mock that serves a response says so in the page console, with the original url intact.</p>
+          <h1 class="headline">One file per scenario,<br /><em>nothing hidden</em>.</h1>
+          <p class="subline">No database, no cloud: a scenario is a plain YAML file you can read, edit by hand and pass to anyone. Every mock that serves a response says so in the page console, with the original url intact.</p>
         </div>
         <div class="code" style="margin-top:30px;">
           <span class="path">.mocks/scenarios/save-error.yaml</span>${highlightYaml(
-            scenarioYaml.trimEnd().split('\n').slice(0, 14).join('\n'),
+            scenarioYaml.trimEnd().split('\n').slice(0, 11).join('\n'),
           )}
         </div>
         <div class="console">
@@ -653,7 +653,7 @@ const panels = [
           File-driven network<br />mocking for the browser
         </p>
         <p style="position:relative;margin-top:12px;font-size:14px;color:#a9a9b4;line-height:1.45;">
-          Scenarios as YAML in your repo,<br />toggled from the toolbar.
+          Plain YAML files, toggled<br />from the toolbar or by your agent.
         </p>
       </div>`,
   },
@@ -665,8 +665,8 @@ const panels = [
       <div class="panel" style="width:1400px;height:560px;padding:0 0 0 76px;flex-direction:row;align-items:center;gap:64px;">
         <div style="width:560px;flex-shrink:0;">
           <div class="brand" style="font-size:26px;"><img src="${logo}" alt="" style="width:34px;height:34px;" /><span>mocker</span></div>
-          <h1 class="headline" style="margin-top:26px;font-size:46px;">Mock the network<br /><em>from your repo</em>.</h1>
-          <p class="subline" style="font-size:18px;">Scenario-based mocking driven by YAML files: no proxy, no code changes, and a request log your coding agent can read.</p>
+          <h1 class="headline" style="margin-top:26px;font-size:46px;">Mock the network<br /><em>from a simple file</em>.</h1>
+          <p class="subline" style="font-size:18px;">Scenario-based mocking driven by YAML files: no proxy, no code changes, and a request log your AI coding agent can read.</p>
         </div>
         <div class="frame" style="width:700px;height:392px;flex-shrink:0;">
           <img src="${shot('settings.png')}" alt="" />

@@ -52,11 +52,11 @@ Because a mock is just a file, an AI coding agent can write it for you: "mock th
 
 The loop closes without a browser. Mocker writes the requests it sees to a log next to your scenarios — method, URL, request body, response status and body, and, when a mock matched, which scenario served it. Your agent reads that log to see what the app really called, writes the YAML, and checks that its mock matched. No screenshots to paste, no copying payloads by hand.
 
-The repo ships a Claude Code skill that teaches an agent the whole workflow (file format, URL matching, verification), so it gets it right on the first try.
+Mocker ships a Claude Code skill that teaches an agent the whole workflow (file format, URL matching, verification), so it gets it right on the first try.
 
 FILES, NOT A DATABASE
 
-Everything mocker knows lives in a folder you pick: one project file plus one YAML file per scenario. "New project" initializes that folder anywhere — an empty directory is enough. Put it inside your project and your mocks are versioned with your branches, reviewed in pull requests and shared with a git pull; keep it anywhere else and mocker works exactly the same.
+Everything mocker knows lives in a folder you pick: one project file plus one YAML file per scenario. "New project" initializes that folder anywhere — an empty directory is enough. Put it next to the app you are working on, or in a scratch directory, or anywhere you like: mocker works the same, and anyone you hand the folder to gets exactly the same mocks.
 
 Saving from the extension writes the YAML; editing the YAML in your editor shows up in the extension. Nothing is hidden in browser storage.
 
@@ -123,7 +123,7 @@ Stores which scenarios and mocks are currently active, the selected environment,
 `alarms`
 
 ```
-A 30-second alarm re-reads the selected folder so that changes made outside the browser — a git pull, an editor, a coding agent writing the YAML — are picked up without the developer having to reconnect anything.
+A 30-second alarm re-reads the selected folder so that changes made outside the browser — an editor, a script, a coding agent writing the YAML — are picked up without the developer having to reconnect anything.
 ```
 
 `host permissions (<all_urls>)`
