@@ -129,8 +129,30 @@ A 30-second alarm re-reads the selected folder so that changes made outside the 
 `host permissions (<all_urls>)`
 
 ```
-The developer decides which page they are testing, and the extension cannot know those hosts in advance: they are localhost ports, staging domains and internal apps that differ per project. Interception therefore has to be available on any page. The content script only patches fetch, XMLHttpRequest and WebSocket inside the page and reports what it sees to the extension; nothing is transmitted off the device, and the developer can switch any domain off from the popup.
+Mocker replaces the responses of the HTTP and WebSocket calls made by the page the developer is testing, so it has to patch fetch, XMLHttpRequest and WebSocket inside the page before the page's own scripts run (document_start, MAIN world). Neither of the narrower alternatives can do that:
+
+- activeTab grants access only after the user clicks the extension, which is too late: by then the page has already made its calls, and reloading the page — the normal way to try a mock — would lose the patch.
+- Enumerating hosts is not possible: the pages a developer tests are localhost ports, private staging domains and internal applications that differ per project and per company. There is no fixed list that could be declared in the manifest.
+
+What the extension does with that access is narrow. The content script patches those three APIs in the page and reports what it sees to the extension; the responses it serves come only from YAML files in a folder the developer selected explicitly through Chrome's folder picker. Nothing is transmitted off the device — there is no server, no account and no telemetry — and the developer can switch interception off for a whole domain from the popup, which greys out the toolbar icon so the state is always visible.
 ```
+
+### Aviso de revisión en profundidad
+
+El dashboard avisa de "permisos de host amplios" y propone `activeTab` o
+enumerar hosts. Decisión tomada: **publicar así y aceptar la revisión larga**,
+porque ninguna de las dos alternativas sirve para este producto — el
+razonamiento está en la justificación de arriba, que es lo que leerá el
+revisor. Qué esperar: la primera revisión tarda más de lo normal (días, no
+horas) y el aviso reaparecerá en cada actualización.
+
+Si algún día molesta lo suficiente, la salida está identificada: quitar el
+permiso amplio del manifest y pedirlo por dominio con
+`optional_host_permissions` más `chrome.scripting.registerContentScripts`
+(`runAt: document_start`, `world: MAIN`) para los orígenes concedidos,
+usando el toggle "Mocking" del popup como gesto de usuario que dispara la
+petición. Elimina además el aviso de instalación de "leer y cambiar todos tus
+datos en todos los sitios web". Está en el roadmap del README.
 
 **Remote code**: No. Todo el código va en el paquete; no hay `eval`, ni
 scripts remotos, ni CDNs.

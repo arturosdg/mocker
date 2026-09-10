@@ -249,6 +249,10 @@ experimental until an alternative import path lands.
 - [ ] Firefox project import (no File System Access API there — needs an
       alternative such as one-shot directory upload).
 - [ ] Chrome Web Store upload from CI.
+- [ ] Per-domain opt-in host access (`optional_host_permissions` plus dynamic
+      content-script registration) so the manifest stops asking for all
+      sites — today's broad host permission is what triggers the store's
+      in-depth review.
 - [ ] Stable per-mock ids: mock activation is tracked by index today, so
       toggled-off mocks can shift when a scenario is reordered.
 - [ ] Query-string matching (deliberately ignored today).
