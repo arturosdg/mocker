@@ -214,7 +214,12 @@ binary; by default it uses the Playwright-cache Chromium or the system
 Chrome.
 
 `npm run screenshots` regenerates the images above (`docs/*.png`) from the
-same harness, using a small demo project.
+same harness, using a small demo project. `npm run store-assets` builds the
+Chrome Web Store material from that same demo — five 1280×800 screenshots and
+the two promo tiles in `docs/store/` — and
+[`docs/CHROME_STORE.md`](docs/CHROME_STORE.md) holds the listing itself:
+summary, description, permission justifications, privacy policy and reviewer
+instructions.
 
 ## Releases
 
