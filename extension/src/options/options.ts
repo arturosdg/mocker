@@ -543,10 +543,19 @@ function buildMockEditor(
 
   container.append(header, firstRow, responseToggle, responseField)
 
+  // campos sin control en el editor: se conservan tal cual al guardar
+  const preserved: Partial<Mock> = {
+    ...(mock.headers ? { headers: mock.headers } : {}),
+    ...(mock.sets !== undefined ? { sets: mock.sets } : {}),
+    ...(mock.when !== undefined ? { when: mock.when } : {}),
+    ...(mock.unless !== undefined ? { unless: mock.unless } : {}),
+  }
+
   mockReaders.set(container, () => {
     const delay = Number(delayInput.value)
     const name = nameInput.value.trim()
     return {
+      ...preserved,
       ...(name ? { name } : {}),
       method: methodSelect.value,
       url: urlInput.value.trim(),

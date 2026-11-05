@@ -74,6 +74,59 @@ string:
   containing it
 - `*` is a wildcard: `/api/items/*/photos/` matches any id in between
 
+## Responses that change during a session (flags)
+
+A mock can turn on **flags** when it matches, and other mocks of the same
+scenario answer differently while those flags are on. Typical case: after
+the POST that completes a task, the task list stops returning that task — in
+whatever order the user completes them.
+
+```yaml
+mocks:
+  # trigger: when it matches, it turns on a scenario flag
+  - name: Complete task A
+    method: POST
+    url: /api/tasks/a1/complete/
+    status: 200
+    sets: a1-done              # a string or a list
+
+  # per item: the item leaves the array while its flag is on
+  - name: Task list
+    method: GET
+    url: /api/tasks/
+    status: 200
+    response:
+      tasks:
+        - $unless: a1-done     # mocker strips the key from the body
+          id: a1
+        - $unless: b2-done
+          id: b2
+
+  # per mock: it only matches while the condition holds
+  - name: Task A detail, closed
+    method: GET
+    url: /api/tasks/a1/
+    when: a1-done              # `unless:` is the opposite
+    status: 404
+```
+
+- `sets` turns flags on when the mock matches. The request that sets the
+  flag already sees it in its own response, and the next request of the page
+  sees it at once.
+- `when` / `unless` on a mock: it matches only when all `when` flags are on
+  and no `unless` flag is on. Otherwise matching moves on to the next mock,
+  so put the "after" variant above the "before" one.
+- `$when` / `$unless` on any object inside an array of the `response`, at
+  any depth: the item leaves the array when its condition fails. Both take a
+  string or a list (a list needs all its flags).
+- Flags belong to one scenario and live in the browser session. They survive
+  page reloads and they reset when you turn the scenario on (or back on), when
+  you click the `⚑ n ↺` chip next to the scenario in the popup, and when the
+  browser restarts.
+- The current flags are in `.mocks/.runtime/state.json`
+  (`{ updatedAt, flags: { <scenario>: [...] } }`), and each entry of
+  `requests.json` from a trigger carries `sets: [...]`.
+
 ## Usage
 
 ```bash
@@ -203,11 +256,12 @@ clobbering your edit.
 
 ## Tests
 
-`npm run e2e` builds the extension and runs the end-to-end battery (78
+`npm run e2e` builds the extension and runs the end-to-end battery (99
 checks) against a real Chromium: import, project creation and connection
 states, matching
 (pathname, query, fragment, wildcard, variables), fetch/XHR interception with
-delay and precedence, scenario/mock/domain toggles, captures and
+delay and precedence, scenario flags (`sets`, `when`/`unless`,
+`$when`/`$unless`, resets), scenario/mock/domain toggles, captures and
 add-as-mock, the runtime log, editing/CRUD/validation/archiving, drag
 reorder, docs and the panel. Set `MOCKER_CHROME` to point at a specific
 binary; by default it uses the Playwright-cache Chromium or the system

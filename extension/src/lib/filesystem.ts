@@ -468,6 +468,10 @@ export function writeRuntimeWsFramesLog(frames: unknown[]) {
   return writeRuntimeFile('websockets.json', { frames })
 }
 
+export function writeRuntimeStateLog(flags: Record<string, string[]>) {
+  return writeRuntimeFile('state.json', { flags })
+}
+
 export function updateProject(project: Project): Promise<WriteResult> {
   return performWrite(async (handle) => {
     if (!project.name?.trim()) throw new Error('The project needs a name')

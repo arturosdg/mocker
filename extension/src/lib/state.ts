@@ -6,6 +6,9 @@ export interface Mock {
   delay?: number
   headers?: Record<string, string>
   response?: unknown
+  sets?: string | string[]
+  when?: string | string[]
+  unless?: string | string[]
 }
 
 export interface Scenario {
@@ -57,6 +60,7 @@ export interface CapturedRequest {
   scenario?: string
   mockName?: string
   mockUrl?: string
+  sets?: string[]
   body?: string
   requestBody?: string
   origin: string

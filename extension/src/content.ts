@@ -1,10 +1,15 @@
+import { FLAGS_KEY, type ScenarioFlags } from './lib/flags'
 import {
   isOriginDisabled,
   resolveActiveMocks,
   type MockerState,
 } from './lib/state'
 
-function pushMocks(state: MockerState | undefined) {
+let currentState: MockerState | undefined
+let currentFlags: ScenarioFlags = {}
+
+function pushMocks() {
+  const state = currentState
   if (!state) return
   const originDisabled = isOriginDisabled(state, location.origin)
   window.postMessage(
@@ -13,14 +18,31 @@ function pushMocks(state: MockerState | undefined) {
       type: 'mocks',
       mocks: originDisabled ? [] : resolveActiveMocks(state),
       capturing: !originDisabled,
+      flags: currentFlags,
     },
     '*',
   )
 }
 
+async function readFlags(): Promise<ScenarioFlags> {
+  try {
+    const stored = await chrome.storage.session.get(FLAGS_KEY)
+    return (stored[FLAGS_KEY] as ScenarioFlags | undefined) ?? {}
+  } catch {
+    // storage.session solo es accesible desde aquí cuando el background ya
+    // ha abierto su nivel de acceso
+    return {}
+  }
+}
+
 async function readAndPush() {
-  const { state } = await chrome.storage.local.get('state')
-  pushMocks(state as MockerState | undefined)
+  const [{ state }, flags] = await Promise.all([
+    chrome.storage.local.get('state'),
+    readFlags(),
+  ])
+  currentState = state as MockerState | undefined
+  currentFlags = flags
+  pushMocks()
 }
 
 function safeSendMessage(message: object) {
@@ -37,7 +59,11 @@ window.addEventListener('message', (event) => {
   if (data?.source !== 'mocker-page') return
   if (data.type === 'ready') void readAndPush()
   if (data.type === 'matched') {
-    safeSendMessage({ type: 'mocker:matched', scenarioId: data.scenarioId })
+    safeSendMessage({
+      type: 'mocker:matched',
+      scenarioId: data.scenarioId,
+      sets: data.sets,
+    })
   }
   if (data.type === 'request') {
     safeSendMessage({ type: 'mocker:request', request: data.request })
@@ -86,7 +112,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.state) {
-    pushMocks(changes.state.newValue as MockerState | undefined)
+    currentState = changes.state.newValue as MockerState | undefined
+    pushMocks()
+  }
+  if (area === 'session' && changes[FLAGS_KEY]) {
+    currentFlags =
+      (changes[FLAGS_KEY].newValue as ScenarioFlags | undefined) ?? {}
+    pushMocks()
   }
 })
 

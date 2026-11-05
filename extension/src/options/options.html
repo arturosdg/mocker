@@ -156,6 +156,48 @@ mocks:
           </li>
         </ul>
 
+        <h3>Responses that change during a session (flags)</h3>
+        <p>
+          A mock with <code>sets</code> turns on scenario flags when it
+          matches. Other mocks of the same scenario react to them:
+          <code>when</code> / <code>unless</code> decide if a mock matches
+          at all, and <code>$when</code> / <code>$unless</code> on an object
+          inside an array of the response decide if that item stays.
+        </p>
+        <pre>
+mocks:
+  # trigger: when it matches, it turns on a scenario flag
+  - name: Complete task A
+    method: POST
+    url: /api/tasks/a1/complete/
+    status: 200
+    sets: a1-done              # a string or a list
+
+  # per item: the item leaves the array while its flag is on
+  - name: Task list
+    method: GET
+    url: /api/tasks/
+    status: 200
+    response:
+      tasks:
+        - $unless: a1-done     # mocker strips the key from the body
+          id: a1
+        - $unless: b2-done
+          id: b2
+
+  # per mock: it only matches while the condition holds
+  - name: Task A detail, closed
+    method: GET
+    url: /api/tasks/a1/
+    when: a1-done              # `unless:` is the opposite
+    status: 404</pre>
+        <p>
+          Flags belong to one scenario and last for the browser session.
+          Turning the scenario on (or back on) resets them, and so does the
+          <code>⚑ n ↺</code> chip in the popup. The current flags are in
+          <code>.mocks/.runtime/state.json</code>.
+        </p>
+
         <h3>What does NOT go in the files</h3>
         <p>
           Activation (which scenarios and mocks are on, disabled domains and
