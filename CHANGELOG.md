@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/arturosdg/mocker/compare/v1.2.1...v1.3.0) (2026-11-05)
+
+
+### Features
+
+* scenario flags change responses after a trigger call ([#55](https://github.com/arturosdg/mocker/issues/55)) ([e988f2e](https://github.com/arturosdg/mocker/commit/e988f2e2b79990e1b6476c63cb9916c623fdb173))
+
 ## [1.2.1](https://github.com/arturosdg/mocker/compare/v1.2.0...v1.2.1) (2026-09-10)
 
 
