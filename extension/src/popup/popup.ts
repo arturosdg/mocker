@@ -7,6 +7,7 @@ import {
   type AccessState,
   type WriteResult,
 } from '../lib/filesystem'
+import { FLAGS_KEY, type ScenarioFlags } from '../lib/flags'
 import {
   EMPTY_STATE,
   isMockActive,
@@ -42,6 +43,11 @@ async function getState(): Promise<MockerState> {
 async function getCounts(): Promise<Record<string, number>> {
   const { counts } = await chrome.storage.session.get('counts')
   return (counts as Record<string, number> | undefined) ?? {}
+}
+
+async function getFlags(): Promise<ScenarioFlags> {
+  const stored = await chrome.storage.session.get(FLAGS_KEY)
+  return (stored[FLAGS_KEY] as ScenarioFlags | undefined) ?? {}
 }
 
 async function getCapturedRequests(): Promise<CapturedRequest[]> {
@@ -143,6 +149,7 @@ function buildScenarioItem(
   state: MockerState,
   scenario: Scenario,
   counts: Record<string, number>,
+  flags: ScenarioFlags,
 ): HTMLElement {
   const item = document.createElement('li')
   item.className = 'scenario'
@@ -182,9 +189,26 @@ function buildScenarioItem(
   badge.textContent = String(count ?? 0)
   badge.hidden = !count
 
+  // Marcas activadas por los mocks con `sets`: el chip las cuenta y al
+  // pulsarlo se borran, para repetir la sesión desde cero.
+  const scenarioFlags = flags[scenario.id] ?? []
+  const flagsChip = document.createElement('button')
+  flagsChip.className = 'scenario__flags'
+  flagsChip.textContent = `⚑ ${scenarioFlags.length} ↺`
+  flagsChip.title = `Flags: ${scenarioFlags.join(', ')}\nClick to reset`
+  flagsChip.hidden = scenarioFlags.length === 0
+  flagsChip.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void chrome.runtime.sendMessage({
+      type: 'mocker:reset-flags',
+      scenarioId: scenario.id,
+    })
+  })
+
   row.append(
     expandIndicator,
     info,
+    flagsChip,
     badge,
     buildToggle(
       state.activation[scenario.id]?.active ?? false,
@@ -294,7 +318,11 @@ function renderToolbar(state: MockerState) {
   if (current) select.value = current
 }
 
-function renderScenarios(state: MockerState, counts: Record<string, number>) {
+function renderScenarios(
+  state: MockerState,
+  counts: Record<string, number>,
+  flags: ScenarioFlags,
+) {
   const list = document.getElementById('scenario-list')!
   const emptyMessage = document.getElementById('empty-message')!
 
@@ -320,7 +348,7 @@ function renderScenarios(state: MockerState, counts: Record<string, number>) {
   emptyMessage.hidden = true
   list.replaceChildren(
     ...visibleScenarios.map((scenario) =>
-      buildScenarioItem(state, scenario, counts),
+      buildScenarioItem(state, scenario, counts, flags),
     ),
   )
 }
@@ -730,9 +758,10 @@ function renderWsNetwork(
 }
 
 async function render() {
-  const [state, counts, requests, frames, access] = await Promise.all([
+  const [state, counts, flags, requests, frames, access] = await Promise.all([
     getState(),
     getCounts(),
+    getFlags(),
     getCapturedRequests(),
     getCapturedWsFrames(),
     getAccessState(),
@@ -743,7 +772,7 @@ async function render() {
   renderToolbar(state)
   renderMode()
   if (popupMode === 'mocks') {
-    renderScenarios(state, counts)
+    renderScenarios(state, counts, flags)
   } else {
     renderWsSaved(state)
   }

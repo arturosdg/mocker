@@ -1,17 +1,30 @@
+import {
+  addFlags,
+  applyItemConditions,
+  conditionsMet,
+  toFlagList,
+  type ScenarioFlags,
+} from './lib/flags'
 import type { ResolvedMock } from './lib/state'
 
 const MAX_CAPTURED_BODY_LENGTH = 32768
 
 let mocks: ResolvedMock[] = []
 let capturing = true
+let flags: ScenarioFlags = {}
 
 window.addEventListener('message', (event) => {
   const data = event.data
   if (data?.source === 'mocker-extension' && data.type === 'mocks') {
     mocks = data.mocks as ResolvedMock[]
     capturing = data.capturing === true
+    flags = (data.flags as ScenarioFlags | undefined) ?? {}
   }
 })
+
+function scenarioFlags(mock: ResolvedMock): string[] {
+  return flags[mock.scenarioId] ?? []
+}
 
 function stripTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, '')
@@ -47,15 +60,36 @@ function findMock(method: string, url: string): ResolvedMock | undefined {
   return mocks.find(
     (mock) =>
       mock.method.toUpperCase() === method.toUpperCase() &&
-      matchesUrl(mock.url, parsed),
+      matchesUrl(mock.url, parsed) &&
+      conditionsMet(mock.when, mock.unless, scenarioFlags(mock)),
   )
 }
 
+// Las marcas se aplican aquí mismo, sin esperar al background: la siguiente
+// petición de la página (el GET del listado tras el POST) ya las ve.
 function reportMatched(mock: ResolvedMock) {
+  const sets = toFlagList(mock.sets)
+  if (sets.length > 0) flags = addFlags(flags, mock.scenarioId, sets)
   window.postMessage(
-    { source: 'mocker-page', type: 'matched', scenarioId: mock.scenarioId },
+    {
+      source: 'mocker-page',
+      type: 'matched',
+      scenarioId: mock.scenarioId,
+      sets,
+    },
     '*',
   )
+}
+
+function mockedRequestFields(mock: ResolvedMock) {
+  const sets = toFlagList(mock.sets)
+  return {
+    mocked: true,
+    scenario: mock.scenarioId,
+    ...(mock.name ? { mockName: mock.name } : {}),
+    mockUrl: mock.url,
+    ...(sets.length > 0 ? { sets } : {}),
+  }
 }
 
 interface CapturedRequest {
@@ -66,6 +100,7 @@ interface CapturedRequest {
   scenario?: string
   mockName?: string
   mockUrl?: string
+  sets?: string[]
   body?: string
   requestBody?: string
 }
@@ -94,7 +129,9 @@ function absoluteUrl(url: string): string {
 function mockBody(mock: ResolvedMock): string {
   return typeof mock.response === 'string'
     ? mock.response
-    : JSON.stringify(mock.response ?? null)
+    : JSON.stringify(
+        applyItemConditions(mock.response ?? null, scenarioFlags(mock)),
+      )
 }
 
 function logMocked(mock: ResolvedMock, method: string, url: string) {
@@ -164,10 +201,7 @@ window.fetch = async (input, init) => {
       method: request.method,
       url: absoluteUrl(request.url),
       status: mock.status,
-      mocked: true,
-      scenario: mock.scenarioId,
-      ...(mock.name ? { mockName: mock.name } : {}),
-      mockUrl: mock.url,
+      ...mockedRequestFields(mock),
       requestBody,
     })
   }
@@ -249,10 +283,7 @@ XMLHttpRequest.prototype.send = function (
       method: request.method,
       url: absoluteUrl(request.url),
       status: mock.status,
-      mocked: true,
-      scenario: mock.scenarioId,
-      ...(mock.name ? { mockName: mock.name } : {}),
-      mockUrl: mock.url,
+      ...mockedRequestFields(mock),
       requestBody,
     })
   }

@@ -7,8 +7,10 @@ description: >-
   .mocks/.runtime/requests.json. Use when the user asks to mock the network,
   fake or intercept HTTP calls, return a fixed response for an endpoint,
   simulate a backend error (500, 401, timeout/delay), create or edit mock
-  scenarios, or check which requests were intercepted. Keywords: mocker, mock,
-  mockear la red, escenario de mocks, interceptar llamadas.
+  scenarios, make a response change after another call (flags: an item leaves
+  a list after its POST), or check which requests were intercepted. Keywords:
+  mocker, mock, mockear la red, escenario de mocks, interceptar llamadas,
+  respuestas según la llamada.
 ---
 
 # mocker — file-driven network mocks
@@ -106,6 +108,56 @@ string:
   separating two hosts that share a pathname; then use a full url with a
   host variable
 
+## Responses that change during a session: flags
+
+Use flags when a response must change after another call — e.g. the task
+list stops returning a task once its POST `/complete/` happened, in any
+order. Do not write one scenario per state: the combinations explode.
+
+```yaml
+mocks:
+  # trigger: when it matches, it turns on a scenario flag
+  - name: Complete task A
+    method: POST
+    url: /api/tasks/a1/complete/
+    status: 200
+    sets: a1-done              # a string or a list
+
+  # per item: the item leaves the array while its flag is on
+  - name: Task list
+    method: GET
+    url: /api/tasks/
+    status: 200
+    response:
+      tasks:
+        - $unless: a1-done     # mocker strips the key from the body
+          id: a1
+        - $unless: b2-done
+          id: b2
+
+  # per mock: it only matches while the condition holds
+  - name: Task A detail, closed
+    method: GET
+    url: /api/tasks/a1/
+    when: a1-done              # `unless:` is the opposite
+    status: 404
+```
+
+- `sets` (string or list): flags the mock turns on when it matches. Its own
+  response and every later request already see them.
+- `when` / `unless` on a mock: it matches only if all `when` flags are on
+  and no `unless` flag is on; if not, matching continues with the next mock.
+  Put the "after" variant **above** the "before" one.
+- `$when` / `$unless` on an object inside an array of `response` (any
+  depth): the item is dropped when the condition fails; mocker strips both
+  keys from the body.
+- Flags are per scenario and live in the browser session. They reset when
+  the user turns the scenario on again, clicks the `⚑ n ↺` chip in the
+  popup, or restarts the browser. You cannot reset them from the files: ask
+  the user.
+- Check them in `.mocks/.runtime/state.json`:
+  `{ "updatedAt": "…", "flags": { "<scenario-id>": ["a1-done"] } }`.
+
 ## Workflow
 
 1. Write or edit the scenario YAML. The extension picks up changes every
@@ -170,13 +222,15 @@ Last 200 requests from tabs with mocking enabled:
       "mocked": true,
       "scenario": "save-error",
       "mockName": "Broken save",
-      "mockUrl": "/api/items/"
+      "mockUrl": "/api/items/",
+      "sets": ["save-failed"]
     }
   ]
 }
 ```
 
-- `mocked: true` + `scenario`/`mockUrl` → your mock matched.
+- `mocked: true` + `scenario`/`mockUrl` → your mock matched. `sets` only
+  appears when that mock turned flags on.
 - No `mocked` → real traffic that passed through: if you expected a match,
   review method/url; if not, its real `body` is material for building the
   mock.
@@ -238,3 +292,8 @@ Last 200 WebSocket frames from tabs with mocking enabled, both directions:
 - Scenario exists but does not intercept: its switch is off, it is archived
   (`archived: true`), or the domain is disabled (popup toggle / gray icon).
 - Do not edit activation or touch `chrome.storage`: it is not yours.
+- An item still shows after its trigger: the trigger and the list are in
+  different scenarios (flags are per scenario), the flag names differ, or
+  the flags were reset — check `.runtime/state.json`.
+- A `when` variant never matches: it is below the plain mock for the same
+  url, and the first match wins.

@@ -200,6 +200,47 @@ mocks:
   )
   await write(
     scenarios,
+    'flags.yaml',
+    `name: Flags
+mocks:
+  - name: Completar t1
+    method: POST
+    url: /api/tasks/t1/complete/
+    status: 200
+    sets: t1-done
+  - name: Completar t2
+    method: POST
+    url: /api/tasks/t2/complete/
+    status: 200
+    sets: [t2-done]
+  - name: Detalle t1 cerrada
+    method: GET
+    url: /api/tasks/t1/
+    when: t1-done
+    status: 404
+    response: { detail: gone }
+  - name: Detalle t1
+    method: GET
+    url: /api/tasks/t1/
+    status: 200
+    response: { id: t1 }
+  - name: Listado
+    method: GET
+    url: /api/tasks/
+    status: 200
+    response:
+      tasks:
+        - $unless: t1-done
+          id: t1
+        - $unless: t2-done
+          id: t2
+        - $when: [t1-done, t2-done]
+          id: all-done
+        - id: t3
+`,
+  )
+  await write(
+    scenarios,
     'arch.yaml',
     'name: Archivable\nmocks:\n  - method: GET\n    url: /api/arch/\n    status: 200\n    response: { v: arch }\n',
   )
@@ -215,7 +256,7 @@ check(
 )
 check(
   'escenarios cargados',
-  (await settings.locator('#scenario-list .card').count()) === 9,
+  (await settings.locator('#scenario-list .card').count()) === 10,
   String(await settings.locator('#scenario-list .card').count()),
 )
 
@@ -239,7 +280,7 @@ const patchState = (patch) =>
 // ───────────────────────── B. Modo lectura y proyecto
 check(
   'modo lectura por defecto',
-  (await settings.locator('.card--read').count()) === 9,
+  (await settings.locator('.card--read').count()) === 10,
 )
 const alphaRow = settings
   .locator('[data-scenario-id="alpha"] .read-mock')
@@ -378,6 +419,71 @@ await patchState({
 await settings.waitForTimeout(400)
 check('precedencia: reactivar invierte', (await getJson('/api/p/')).body.v === 'A')
 
+// ───────────────────────── C2. Marcas de escenario: sets, when/unless, $unless
+const readFlagsState = () =>
+  serviceWorker.evaluate(async () => {
+    const { flags } = await chrome.storage.session.get('flags')
+    return flags ?? {}
+  })
+const taskIds = async () =>
+  (await getJson('/api/tasks/')).body.tasks.map((task) => task.id).join(',')
+await patchState({
+  activation: {
+    ...(await settings.evaluate(async () => {
+      const { state } = await chrome.storage.local.get('state')
+      return state.activation
+    })),
+    flags: { active: true, activatedAt: Date.now() },
+  },
+})
+await settings.waitForTimeout(400)
+check('marcas: listado completo al empezar', (await taskIds()) === 't1,t2,t3', await taskIds())
+check('marcas: mock con when no casa sin la marca', (await getJson('/api/tasks/t1/')).body.id === 't1')
+await getJson('/api/tasks/t2/complete/', { method: 'POST' })
+check(
+  'marcas: el GET justo tras el POST ya quita el elemento',
+  (await taskIds()) === 't1,t3',
+  await taskIds(),
+)
+await getJson('/api/tasks/t1/complete/', { method: 'POST' })
+check('marcas: orden indistinto y $when con varias marcas', (await taskIds()) === 'all-done,t3', await taskIds())
+check('marcas: mock con when casa con la marca', (await getJson('/api/tasks/t1/')).status === 404)
+await settings.waitForTimeout(500)
+const storedFlags = await readFlagsState()
+check(
+  'marcas: guardadas por escenario en storage.session',
+  JSON.stringify(storedFlags.flags) === JSON.stringify(['t2-done', 't1-done']),
+  JSON.stringify(storedFlags),
+)
+await app.reload()
+await app.waitForTimeout(600)
+check('marcas: sobreviven a recargar la página', (await taskIds()) === 'all-done,t3', await taskIds())
+// la recarga vacía las capturas de la pestaña: D añade una sin mock a un escenario
+await getJson('/api/nada/')
+const stateLog = JSON.parse(await readOpfs(['.runtime', 'state.json']))
+check(
+  'marcas: .runtime/state.json con las marcas',
+  stateLog.flags?.flags?.includes('t1-done') && typeof stateLog.updatedAt === 'string',
+  JSON.stringify(stateLog),
+)
+const triggerEntry = JSON.parse(await readOpfs(['.runtime', 'requests.json'])).requests.find(
+  (entry) => entry.url.includes('/api/tasks/t1/complete/'),
+)
+check('marcas: requests.json anota sets en el disparador', triggerEntry?.sets?.[0] === 't1-done', JSON.stringify(triggerEntry))
+await patchState({
+  activation: {
+    ...(await settings.evaluate(async () => {
+      const { state } = await chrome.storage.local.get('state')
+      return state.activation
+    })),
+    flags: { active: true, activatedAt: Date.now() },
+  },
+})
+await settings.waitForTimeout(500)
+check('marcas: reactivar el escenario las borra', (await taskIds()) === 't1,t2,t3', await taskIds())
+await getJson('/api/tasks/t1/complete/', { method: 'POST' })
+await settings.waitForTimeout(400)
+
 // ───────────────────────── D. Popup: toggles, entorno, capturas
 const popup = await context.newPage()
 popup.on('pageerror', (error) => console.log('[popup pageerror]', error.message))
@@ -392,6 +498,15 @@ check(
   (await popup.locator('#project-name').textContent()) === 'e2e-app' &&
     (await popup.locator('#connection-status').getAttribute('class')).includes('ok'),
 )
+const flagsChip = popup.locator('.scenario', { hasText: 'Flags' }).locator('.scenario__flags')
+check(
+  'popup: chip con las marcas del escenario',
+  (await flagsChip.isVisible()) && (await flagsChip.getAttribute('title')).includes('t1-done'),
+)
+await flagsChip.click()
+await popup.waitForTimeout(500)
+check('popup: ↺ borra las marcas', (await taskIds()) === 't1,t2,t3', await taskIds())
+check('popup: chip oculto sin marcas', await flagsChip.isHidden())
 check(
   'popup: dominio en el toggle',
   (await popup.locator('#origin-label').textContent()) === `localhost:${PORT}`,
@@ -561,6 +676,21 @@ await settings.waitForTimeout(800)
 check(
   'eliminar borra el escenario',
   (await settings.locator('[data-scenario-id="creado-en-e2e"]').count()) === 0,
+)
+
+const flagsCard = settings.locator('[data-scenario-id="flags"]')
+await flagsCard.getByRole('button', { name: 'Edit', exact: true }).click()
+await settings.waitForTimeout(200)
+await flagsCard.locator('.card__header input').first().fill('Flags editado')
+await flagsCard.getByRole('button', { name: 'Save' }).click()
+await settings.waitForTimeout(800)
+const savedFlagsYaml = await readOpfs(['scenarios', 'flags.yaml'])
+check(
+  'guardar desde el editor conserva sets, when y $unless',
+  savedFlagsYaml.includes('sets: t1-done') &&
+    savedFlagsYaml.includes('when: t1-done') &&
+    savedFlagsYaml.includes('$unless: t2-done'),
+  savedFlagsYaml,
 )
 
 // validación de variables

@@ -2,9 +2,22 @@ import {
   getAccessState,
   reloadSnapshot,
   writeRuntimeRequestsLog,
+  writeRuntimeStateLog,
   writeRuntimeWsFramesLog,
 } from './lib/filesystem'
+import {
+  addFlags,
+  FLAGS_KEY,
+  removeScenarioFlags,
+  toFlagList,
+  type ScenarioFlags,
+} from './lib/flags'
 import { isOriginDisabled, type MockerState } from './lib/state'
+
+// el content script lee las marcas de escenario de storage.session
+void chrome.storage.session
+  .setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' })
+  .catch(() => {})
 
 const ICON_ON = {
   16: 'icons/icon-16.png',
@@ -73,12 +86,16 @@ async function syncFromDisk(forceLogFlush = false) {
 }
 
 async function flushRuntimeLogs() {
-  const { requests, wsFrames } = await chrome.storage.session.get([
+  const stored = await chrome.storage.session.get([
     'requests',
     'wsFrames',
+    FLAGS_KEY,
   ])
-  await writeRuntimeRequestsLog((requests as unknown[] | undefined) ?? [])
-  await writeRuntimeWsFramesLog((wsFrames as unknown[] | undefined) ?? [])
+  await writeRuntimeRequestsLog((stored.requests as unknown[] | undefined) ?? [])
+  await writeRuntimeWsFramesLog((stored.wsFrames as unknown[] | undefined) ?? [])
+  await writeRuntimeStateLog(
+    (stored[FLAGS_KEY] as ScenarioFlags | undefined) ?? {},
+  )
 }
 
 chrome.alarms.create('mocker-sync', { periodInMinutes: 0.5 })
@@ -125,6 +142,50 @@ function appendCapturedWsFrame(
   })
 }
 
+let flagsQueue: Promise<void> = Promise.resolve()
+
+function updateFlags(change: (current: ScenarioFlags) => ScenarioFlags) {
+  flagsQueue = flagsQueue.then(async () => {
+    const stored = await chrome.storage.session.get(FLAGS_KEY)
+    const current = (stored[FLAGS_KEY] as ScenarioFlags | undefined) ?? {}
+    const next = change(current)
+    if (next !== current) await chrome.storage.session.set({ [FLAGS_KEY]: next })
+  })
+}
+
+// Activar un escenario (o reactivarlo) empieza una sesión limpia: sus marcas
+// se borran.
+function activatedScenarios(
+  previous: MockerState | undefined,
+  next: MockerState | undefined,
+): string[] {
+  if (!next) return []
+  return Object.entries(next.activation ?? {})
+    .filter(
+      ([id, activation]) =>
+        activation.active &&
+        previous?.activation?.[id]?.activatedAt !== activation.activatedAt,
+    )
+    .map(([id]) => id)
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.state) {
+    const activated = activatedScenarios(
+      changes.state.oldValue as MockerState | undefined,
+      changes.state.newValue as MockerState | undefined,
+    )
+    if (activated.length > 0) {
+      updateFlags((current) => removeScenarioFlags(current, activated))
+    }
+  }
+  if (area === 'session' && changes[FLAGS_KEY]) {
+    void writeRuntimeStateLog(
+      (changes[FLAGS_KEY].newValue as ScenarioFlags | undefined) ?? {},
+    )
+  }
+})
+
 async function incrementMatchedCount(scenarioId: string) {
   const { counts } = await chrome.storage.session.get('counts')
   const current = (counts as Record<string, number> | undefined) ?? {}
@@ -140,7 +201,18 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   }
 
   if (message?.type === 'mocker:matched') {
-    void incrementMatchedCount(message.scenarioId as string)
+    const scenarioId = message.scenarioId as string
+    void incrementMatchedCount(scenarioId)
+    const sets = toFlagList(message.sets as string[] | undefined)
+    if (sets.length > 0) {
+      updateFlags((current) => addFlags(current, scenarioId, sets))
+    }
+    return
+  }
+
+  if (message?.type === 'mocker:reset-flags') {
+    const scenarioId = message.scenarioId as string
+    updateFlags((current) => removeScenarioFlags(current, [scenarioId]))
     return
   }
 
